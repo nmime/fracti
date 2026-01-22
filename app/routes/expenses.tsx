@@ -3,7 +3,7 @@ import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
 import { type Expense, type User, type CreateExpenseInput, api } from '@/lib/api'
-import { demoMembers, createDemoExpenses } from '@/lib/fixtures'
+import { demoMembers, createDemoExpenses, demoGroup } from '@/lib/fixtures'
 import { logger } from '@/lib/logger'
 import { ExpenseCard } from '@/components/ExpenseCard'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
@@ -17,31 +17,35 @@ export default function ExpensesPage() {
   const { user } = useTelegram()
   const { toast } = useToast()
   const [expenses, setExpenses] = useState<Expense[]>(() => createDemoExpenses())
+  const [members, setMembers] = useState<User[]>(demoMembers)
   const [searchQuery, setSearchQuery] = useState('')
-
-  // TODO: In production, fetch members from API
-  const members = demoMembers
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
   const [isLoading, setIsLoading] = useState(false)
 
   // Use Telegram user ID when available, fallback to demo user '1' for development
   const currentUserId = user?.id ? String(user.id) : '1'
-  const groupId = 'demo' // In production, get from route params or context
+  // In production, get from route params (e.g., useParams()) or Telegram start_param
+  const groupId = demoGroup.id
 
-  // Fetch expenses from API on mount
+  // Fetch group data (including members) and expenses from API on mount
   useEffect(() => {
     const abortController = new AbortController()
 
-    const loadExpenses = async () => {
+    const loadData = async () => {
       setIsLoading(true)
       try {
-        const data = await api.getExpenses(groupId)
+        // Fetch group (with members) and expenses in parallel
+        const [groupData, expensesData] = await Promise.all([
+          api.getGroup(groupId),
+          api.getExpenses(groupId),
+        ])
         if (!abortController.signal.aborted) {
-          setExpenses(data)
+          setMembers(groupData.members)
+          setExpenses(expensesData)
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return
-        logger.error('Failed to load expenses', { groupId }, err)
+        logger.error('Failed to load group data', { groupId }, err)
         // Keep demo data on error
       } finally {
         if (!abortController.signal.aborted) {
@@ -49,7 +53,7 @@ export default function ExpensesPage() {
         }
       }
     }
-    loadExpenses()
+    loadData()
 
     return () => abortController.abort()
   }, [groupId])
