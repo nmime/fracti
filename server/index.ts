@@ -16,6 +16,7 @@ import { standardRateLimit, aiRateLimit, webhookRateLimit } from './middleware/r
 import { groupsRoutes } from './routes/groups'
 import { expensesRoutes } from './routes/expenses'
 import { settlementsRoutes } from './routes/settlements'
+import { usersRoutes } from './routes/users'
 import { aiRoutes } from './routes/ai'
 import { webhooksRoutes } from './routes/webhooks'
 
@@ -114,6 +115,10 @@ app.route('/api/groups', expensesRoutes)
 
 // Settlements API (nested under groups) - already covered by /api/groups/*
 app.route('/api/groups', settlementsRoutes)
+
+// Users API - user-centric queries (personal expenses, debts, settlements)
+app.use('/api/users/*', standardRateLimit)
+app.route('/api/users', usersRoutes)
 
 // AI API - stricter rate limit (expensive operations)
 app.use('/api/ai/*', aiRateLimit)

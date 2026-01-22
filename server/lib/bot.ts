@@ -276,7 +276,9 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 
   const groupId = String(chatId)
 
-  // Group and user are already registered in the main message handler
+  // Get group for the title (already created in main message handler)
+  const group = await getGroup(groupId)
+  if (!group) return
 
   try {
     const response = await invokeClaudeText(PARSER_SYSTEM_PROMPT, text)
@@ -333,9 +335,11 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
     await createExpense({
       id: randomUUID(),
       groupId,
+      groupTitle: group.title,
       payerId,
       payerName,
       amount: expenseAmount,
+      currency: group.currency,
       description: parsed.description || 'Expense',
       splitType: 'equal',
       splits,

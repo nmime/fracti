@@ -159,9 +159,11 @@ settlementsRoutes.post(
       toUserId: toId,
       toUserName: toMember.name,
       amount,
+      currency: group.currency,
       txHash: txHash || undefined,
       status: txHash ? 'completed' : 'pending',
       createdAt: now,
+      completedAt: txHash ? now : undefined,
     })
 
     return c.json({ success: true, data: settlement }, 201)
