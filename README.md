@@ -6,400 +6,387 @@ Fracti is an AI-powered Telegram Mini App that turns unstructured group chat cha
 
 ## Features
 
-- **AI-Powered Expense Parsing** - Natural language processing to extract expenses from chat messages (only when @mentioned)
-- **Receipt OCR** - Scan receipts with Claude Vision to automatically itemize expenses
-- **Automatic User Tracking** - Bot captures all group messages to track members automatically
-- **User Avatars** - Fetches Telegram profile photos and stores them in S3
-- **Debt Graph Visualization** - Interactive force-directed graph showing who owes whom
-- **Min-Cash-Flow Optimization** - Minimize the number of transactions needed to settle debts
-- **On-Chain Settlements** - Pay debts directly with TON Connect wallet integration
-- **Telegram Native** - Seamless integration as a Telegram Mini App
-- **Multi-language Support** - English and Russian localization
+### Telegram Bot
+
+| Feature | Description |
+|---------|-------------|
+| **Automatic User Tracking** | Bot captures ALL group messages to automatically track members - no manual registration needed |
+| **User Avatars** | Automatically fetches Telegram profile photos and stores them in S3 for display in the app |
+| **Smart AI Trigger** | AI expense parsing only activates when bot is @mentioned - no spam, no false positives |
+| **Natural Language Parsing** | Just write naturally: `@FractiBot I paid 100 for dinner with @alice and @bob` |
+| **Receipt OCR** | Send a photo of any receipt - Claude Vision extracts merchant, items, and totals automatically |
+| **Multi-language** | Full support for English and Russian, auto-detects from Telegram language settings |
+
+### Expense Management
+
+| Feature | Description |
+|---------|-------------|
+| **Equal Split** | Automatically divide expenses equally among selected participants |
+| **Custom Split** | Assign specific amounts or percentages to each person |
+| **Expense History** | Full searchable history with filters (all, mine, I owe) |
+| **Edit & Delete** | Modify or remove expenses with full audit trail |
+| **Categories** | AI automatically categorizes expenses (food, transport, entertainment, etc.) |
+
+### Debt Optimization
+
+| Feature | Description |
+|---------|-------------|
+| **Debt Graph Visualization** | Interactive force-directed graph showing who owes whom |
+| **Min-Cash-Flow Algorithm** | Minimizes number of transactions needed to settle all debts |
+| **Balance Summary** | Real-time view of what you owe and what you're owed |
+| **Settlement Suggestions** | Automatically suggests optimal payment paths |
+
+### TON Blockchain Payments
+
+| Feature | Description |
+|---------|-------------|
+| **TON Connect Integration** | Connect any TON wallet (Tonkeeper, OpenMask, MyTonWallet) |
+| **One-Click Payments** | Pay debts directly from the app with a single tap |
+| **Transaction Tracking** | All settlements recorded with blockchain transaction hash |
+| **Payment Confirmation** | Automatic status updates when payments complete |
+
+### Security & Privacy
+
+| Feature | Description |
+|---------|-------------|
+| **Telegram Auth Validation** | All API requests validated using official Telegram init data |
+| **HSTS Enabled** | Strict Transport Security for all connections |
+| **Secure IDs** | `crypto.randomUUID()` for all identifiers |
+| **Request Timeouts** | AbortController with 30s timeout prevents hanging requests |
+| **Input Validation** | Zod schemas validate all API inputs |
+| **Rate Limiting** | Built-in rate limiting to prevent abuse |
 
 ## How It Works
 
-### Bot Behavior
-1. **Captures ALL messages** - Every message in the group registers the sender as a member
-2. **Fetches avatars** - Downloads user profile photos from Telegram and stores in S3
-3. **AI parsing on @mention only** - Only processes expenses when bot is @mentioned (e.g., `@FractiBot I paid 50 for dinner`)
-4. **Receipt scanning** - Photo messages trigger receipt OCR automatically
+### Message Flow
 
-### Expense Flow
 ```
-User: "@FractiBot I paid 100 TON for dinner with @alice and @bob"
-         ↓
-Bot: Parses with Claude AI
-         ↓
-Bot: Creates expense, splits equally
-         ↓
-Bot: "✅ Expense created: dinner (100 TON) - Paid by John, split 3 ways (33.33 each)"
+┌─────────────────────────────────────────────────────────────────┐
+│                         GROUP CHAT                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Alice: "Hey everyone!"                                          │
+│         ↓                                                        │
+│         Bot: [silently registers Alice + fetches avatar]         │
+│                                                                  │
+│  Bob: "Let's get pizza"                                          │
+│       ↓                                                          │
+│       Bot: [silently registers Bob + fetches avatar]             │
+│                                                                  │
+│  Alice: "@FractiBot I paid 45 for pizza, split with Bob"         │
+│         ↓                                                        │
+│         Bot: Parses with Claude AI                               │
+│         ↓                                                        │
+│         Bot: "✅ Expense created: pizza (45 TON)                 │
+│               Paid by Alice, split 2 ways (22.50 each)"          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### Avatar System
+
+```
+User sends message
+       ↓
+Check DynamoDB: has avatar?
+       ↓ no
+Telegram API: getUserProfilePhotos
+       ↓
+Download largest photo
+       ↓
+Upload to S3: avatars/{telegramId}.jpg
+       ↓
+Store relative path in DynamoDB
+       ↓
+API transforms to full S3 URL on read
+```
+
+### AI Expense Parsing
+
+```
+Input:  "@FractiBot I paid 50 TON for dinner with Alice and Bob"
+
+Claude AI extracts:
+{
+  "payer": null,           // null = message sender
+  "amount": 50,
+  "currency": "TON",
+  "description": "dinner",
+  "beneficiaries": ["Alice", "Bob"],
+  "splitType": "equal",
+  "confidence": 0.95
+}
+
+Result: Expense created, split 3 ways (16.67 TON each)
+```
+
+### Receipt Vision
+
+```
+Input: [Photo of restaurant receipt]
+
+Claude Vision extracts:
+{
+  "merchant": "Pizza Palace",
+  "date": "2026-01-15",
+  "items": [
+    {"name": "Margherita Pizza", "quantity": 1, "price": 12.00},
+    {"name": "Pepperoni Pizza", "quantity": 1, "price": 14.00},
+    {"name": "Drinks", "quantity": 3, "price": 9.00}
+  ],
+  "subtotal": 35.00,
+  "tax": 3.15,
+  "total": 38.15,
+  "currency": "USD",
+  "confidence": 0.94
+}
+```
+
+### Min-Cash-Flow Algorithm
+
+Before optimization:
+```
+Alice owes Bob: $30
+Bob owes Carol: $30
+Carol owes Alice: $10
+```
+
+After optimization:
+```
+Alice pays Carol: $20
+```
+
+One transaction instead of three!
 
 ## Tech Stack
 
-### Frontend (Telegram Mini App)
-- **React 19** - UI framework
-- **React Router v7** - Client-side routing
-- **Vite 6** - Build tool and dev server
-- **shadcn/ui** - Tailwind CSS components
-- **react-force-graph-2d** - Debt web visualization
-- **@twa-dev/sdk** - Telegram Mini App SDK
+### Frontend
+- **React 19** + **React Router 7** - Modern React with file-based routing
+- **Vite 6** - Fast build tool with HMR
+- **Tailwind CSS** + **shadcn/ui** - Beautiful, accessible components
+- **react-force-graph-2d** - Interactive debt visualization
+- **@twa-dev/sdk** - Official Telegram Mini App SDK
 - **@tonconnect/ui-react** - TON wallet integration
-- **i18next** - Internationalization
+- **i18next** - Internationalization (EN, RU)
 
-### Backend (AWS Serverless + Hono)
-- **Hono** - Lightweight web framework on Lambda
+### Backend
+- **Hono** - Lightweight, fast web framework
 - **Grammy** - Telegram Bot framework
-- **AWS Lambda** - Node.js 20.x (ARM64)
-- **Amazon API Gateway** - HTTP API
+- **AWS Lambda** - Serverless compute (Node.js 20, ARM64)
+- **Amazon API Gateway** - HTTP API with CORS
 - **Amazon DynamoDB** - Single-table design with GSI
-- **Amazon S3** - User avatar storage
+- **Amazon S3** - Avatar storage with public read
 - **AWS SAM** - Infrastructure as Code
 
-### AI Layer
-- **Amazon Bedrock** - Claude 3.5 Sonnet
-- **Text Parser Agent** - Natural language to structured JSON
-- **Vision Agent** - Receipt OCR and itemization
+### AI
+- **Amazon Bedrock** - Managed AI service
+- **Claude 3.5 Sonnet** - Text parsing and vision
+- **Custom prompts** - Optimized for expense extraction
 
 ### Blockchain
-- **TON Connect** - Wallet connection and transactions
-- **Native TON** - Direct payments
+- **TON Connect 2.0** - Wallet connection protocol
+- **Native TON** - Direct cryptocurrency payments
+
+## Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Telegram Chat  │────▶│  Bot Webhook     │────▶│ Register User   │
+│  (ALL messages) │     │  (Grammy)        │     │ + Fetch Avatar  │
+└─────────────────┘     └──────────────────┘     └────────┬────────┘
+                                                          │
+                                                 ┌────────▼────────┐
+                                                 │  @mention?      │
+                                                 └────────┬────────┘
+                                                          │ yes
+┌─────────────────┐     ┌──────────────────┐     ┌────────▼────────┐
+│  Mini App (UI)  │────▶│  API Gateway     │────▶│  Hono Lambda    │
+│  React + Vite   │     │  HTTP API        │     │  (Node.js 20)   │
+└─────────────────┘     └──────────────────┘     └────────┬────────┘
+                                                          │
+                        ┌─────────────────────────────────┼─────────────────────────────────┐
+                        │                                 │                                 │
+               ┌────────▼────────┐               ┌────────▼────────┐               ┌────────▼────────┐
+               │  AWS Bedrock    │               │    DynamoDB     │               │   S3 Avatars    │
+               │  Claude 3.5     │               │  Single Table   │               │  Public Read    │
+               └─────────────────┘               └─────────────────┘               └─────────────────┘
+```
+
+## Database Schema
+
+Single-table design with two Global Secondary Indexes:
+
+| PK | SK | GSI1PK | GSI1SK | GSI2PK | Description |
+|---|---|---|---|---|---|
+| `GROUP#<id>` | `METADATA` | - | - | - | Group info |
+| `GROUP#<id>` | `USER#<tgId>` | `USER#<tgId>` | `GROUP#<id>` | - | Member with avatar |
+| `GROUP#<id>` | `TX#<ts>` | - | - | `EXPENSE#<id>` | Expense record |
+| `GROUP#<id>` | `SETTLE#<ts>` | - | - | `SETTLEMENT#<id>` | Settlement record |
+
+- **GSI1**: Find all groups for a user
+- **GSI2**: O(1) lookup by expense/settlement ID
+
+## API Endpoints
+
+### Groups
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/groups` | List user's groups |
+| GET | `/api/groups/:id` | Get group with members (includes avatarUrl) |
+| POST | `/api/groups` | Create new group |
+| POST | `/api/groups/:id/join` | Join a group |
+| PUT | `/api/groups/:id/wallet` | Update wallet address |
+
+### Expenses
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/groups/:id/expenses` | List expenses (paginated) |
+| POST | `/api/groups/:id/expenses` | Create expense |
+| DELETE | `/api/groups/:id/expenses/:eid` | Delete expense |
+
+### Settlements
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/groups/:id/debts` | Get debt graph + suggested settlements |
+| GET | `/api/groups/:id/settlements` | List settlements |
+| POST | `/api/groups/:id/settlements` | Record new settlement |
+| PUT | `/api/groups/:id/settlements/:sid` | Confirm with tx hash |
+
+### AI
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/ai/parse` | Parse expense from natural language |
+| POST | `/api/ai/vision` | Extract data from receipt image |
+
+### Webhooks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/webhooks/telegram` | Telegram bot updates |
+
+### Health
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | API health check |
+
+## Setup & Deployment
+
+See **[docs/SETUP_GUIDE.md](./docs/SETUP_GUIDE.md)** for complete instructions including:
+
+- AWS account creation from zero
+- IAM user setup with correct permissions
+- Installing Node.js, AWS CLI, SAM CLI
+- Creating Telegram bot with @BotFather
+- Deploying to AWS with SAM
+- Configuring Telegram webhook
+- Enabling Bedrock model access
+- Local development setup
+- Troubleshooting guide
+
+### Quick Start (if you have AWS configured)
+
+```bash
+# Clone and install
+git clone https://github.com/yourusername/fracti.git
+cd fracti
+npm install
+
+# Deploy
+npm run sam:build
+npm run sam:deploy:guided
+
+# Set webhook
+export TELEGRAM_BOT_TOKEN=your_token
+npm run webhook:set
+```
 
 ## Project Structure
 
 ```
 fracti/
-├── app/                          # React Frontend
-│   ├── components/               # UI Components
-│   │   ├── ui/                   # shadcn/ui components
-│   │   ├── DebtGraph.tsx         # Force graph visualization
-│   │   ├── ExpenseCard.tsx       # Expense display
-│   │   ├── SettlementCard.tsx    # Settlement display
-│   │   └── WalletButton.tsx      # TON Connect button
-│   ├── routes/                   # Page routes
-│   │   ├── home.tsx              # Dashboard
-│   │   ├── expenses.tsx          # Expenses list
-│   │   ├── settle.tsx            # Settlements
-│   │   └── scan.tsx              # Receipt scanner
-│   ├── lib/                      # Utilities
-│   │   ├── api.ts                # API client
-│   │   ├── telegram.tsx          # Telegram SDK wrapper
-│   │   ├── ton.ts                # TON utilities
-│   │   ├── i18n/                 # Translations (en, ru)
-│   │   └── utils.ts              # General utilities
-│   └── styles/                   # CSS
-├── server/                       # AWS Lambda (Hono)
-│   ├── index.ts                  # Hono app entry point
-│   ├── routes/                   # API routes
-│   │   ├── groups.ts             # Group CRUD
-│   │   ├── expenses.ts           # Expense CRUD
-│   │   ├── settlements.ts        # Settlement & debt calculation
-│   │   ├── ai.ts                 # AI parsing endpoints
-│   │   └── webhooks.ts           # Telegram bot webhook
-│   ├── middleware/
-│   │   ├── auth.ts               # Telegram auth middleware
-│   │   └── rateLimit.ts          # Rate limiting
-│   └── lib/                      # Shared utilities
-│       ├── bedrock.ts            # AWS Bedrock client
-│       ├── bot.ts                # Telegram bot handlers
-│       ├── dynamodb.ts           # DynamoDB operations
-│       ├── s3.ts                 # S3 avatar storage
-│       ├── debt-graph.ts         # Min-cash-flow algorithm
-│       ├── telegram.ts           # Telegram Bot API helpers
-│       └── config.ts             # Environment config with Zod
-├── template.yaml                 # AWS SAM template
-├── samconfig.toml                # SAM deployment config
+├── app/                      # React Frontend
+│   ├── components/           # UI Components
+│   │   ├── ui/               # shadcn/ui base components
+│   │   ├── DebtGraph.tsx     # Force graph visualization
+│   │   ├── ExpenseCard.tsx   # Expense display card
+│   │   └── WalletButton.tsx  # TON Connect button
+│   ├── routes/               # Page routes
+│   │   ├── home.tsx          # Dashboard with debt graph
+│   │   ├── expenses.tsx      # Expense list + add
+│   │   ├── settle.tsx        # Settlements + pay
+│   │   └── scan.tsx          # Receipt scanner
+│   └── lib/                  # Utilities
+│       ├── api.ts            # API client with types
+│       ├── telegram.tsx      # Telegram SDK wrapper
+│       ├── ton.ts            # TON payment utilities
+│       └── i18n/             # Translations (en, ru)
+├── server/                   # AWS Lambda Backend
+│   ├── routes/               # API route handlers
+│   ├── middleware/           # Auth, rate limiting
+│   └── lib/                  # Shared utilities
+│       ├── bot.ts            # Telegram bot handlers
+│       ├── bedrock.ts        # Claude AI client
+│       ├── dynamodb.ts       # Database operations
+│       ├── s3.ts             # Avatar storage
+│       └── debt-graph.ts     # Min-cash-flow algorithm
+├── docs/
+│   └── SETUP_GUIDE.md        # Complete setup instructions
+├── template.yaml             # AWS SAM template
 └── package.json
 ```
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 20+
-- AWS CLI configured with credentials
-- AWS SAM CLI installed
-- Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
-
-### 1. Clone and Install
-
-```bash
-git clone https://github.com/yourusername/fracti.git
-cd fracti
-npm install
-```
-
-### 2. Configure Environment
-
-Create `.env` file for local development:
-
-```env
-# Required
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-TABLE_NAME=fracti-dev
-S3_BUCKET_NAME=fracti-avatars-dev
-
-# Optional
-BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
-AWS_REGION=us-east-1
-NODE_ENV=development
-
-# Frontend (create .env.local)
-VITE_API_URL=http://localhost:3000
-VITE_TON_MANIFEST_URL=https://your-domain/tonconnect-manifest.json
-```
-
-### 3. Run Locally
-
-```bash
-# Start frontend dev server
-npm run dev
-
-# In another terminal, start backend with SAM
-npm run sam:local
-```
-
-### 4. Deploy to AWS
-
-```bash
-# First time deployment (guided)
-npm run sam:deploy:guided
-
-# Subsequent deployments
-npm run sam:build && npm run sam:deploy
-```
-
-### 5. Configure Telegram Webhook
-
-After deployment, set your bot's webhook:
-
-```bash
-# Using the npm script (requires AWS CLI)
-npm run webhook:set
-
-# Or manually
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-  -d "url=<YOUR_API_GATEWAY_URL>/api/webhooks/telegram"
-```
-
-### 6. Deploy Frontend
-
-```bash
-npm run build
-npm run deploy:frontend
-```
-
-## AWS Resources Created
-
-The SAM template creates:
-
-| Resource | Description |
-|----------|-------------|
-| `FractiTable` | DynamoDB table with GSI1 and GSI2 |
-| `AvatarsBucket` | S3 bucket for user avatars (public read) |
-| `FractiApi` | HTTP API Gateway |
-| `FractiFunction` | Lambda function running Hono |
-| `FrontendBucket` | S3 bucket for frontend (production only) |
-| `FrontendDistribution` | CloudFront CDN (production only) |
-
-## Database Schema
-
-Single-table design in DynamoDB:
-
-| PK | SK | GSI1PK | GSI1SK | Description |
-|---|---|---|---|---|
-| `GROUP#<id>` | `METADATA` | - | - | Group information |
-| `GROUP#<id>` | `USER#<telegramId>` | `USER#<telegramId>` | `GROUP#<id>` | User profile with avatar |
-| `GROUP#<id>` | `TX#<timestamp>` | - | - | Expense record |
-| `GROUP#<id>` | `SETTLE#<timestamp>` | - | - | Settlement record |
-
-**GSI2** enables O(1) lookups by expense/settlement ID.
-
-## API Endpoints
-
-### Groups
-- `GET /api/groups` - List user's groups
-- `GET /api/groups/:id` - Get group with members (includes avatarUrl)
-- `POST /api/groups` - Create new group
-- `POST /api/groups/:id/join` - Join a group
-- `PUT /api/groups/:id/wallet` - Update wallet address
-
-### Expenses
-- `GET /api/groups/:id/expenses` - List expenses
-- `POST /api/groups/:id/expenses` - Create expense
-- `DELETE /api/groups/:id/expenses/:expenseId` - Delete expense
-
-### Settlements
-- `GET /api/groups/:id/debts` - Get debt graph with balances
-- `GET /api/groups/:id/settlements` - List settlements
-- `POST /api/groups/:id/settlements` - Record settlement
-- `PUT /api/groups/:id/settlements/:settlementId` - Confirm settlement
-
-### AI
-- `POST /api/ai/parse` - Parse expense from text
-- `POST /api/ai/vision` - Extract items from receipt image
-
-### Webhooks
-- `POST /api/webhooks/telegram` - Telegram bot webhook
-
-### Health
-- `GET /api/health` - API health check
-
-## Avatar System
-
-Avatars are fetched and stored automatically:
-
-```
-1. User sends message in group
-         ↓
-2. Bot checks if user has avatar in DynamoDB
-         ↓ (no avatar)
-3. Call Telegram API: getUserProfilePhotos
-         ↓
-4. Download largest photo
-         ↓
-5. Upload to S3: avatars/{telegramId}.jpg
-         ↓
-6. Store relative path in DynamoDB
-         ↓
-7. API transforms to full S3 URL on read
-```
-
-**Storage format:**
-- DynamoDB: `avatarUrl: "avatars/123456.jpg"` (relative)
-- API response: `avatarUrl: "https://bucket.s3.region.amazonaws.com/avatars/123456.jpg"` (full URL)
-
-## AI Agents
-
-### Parser Agent
-Converts natural language to structured expense data:
-```
-Input: "@FractiBot I paid 50 TON for dinner with Alice and Bob"
-Output: {
-  "payer": null,
-  "amount": 50,
-  "currency": "TON",
-  "description": "dinner",
-  "beneficiaries": ["Alice", "Bob"],
-  "confidence": 0.95
-}
-```
-
-### Vision Agent
-Extracts itemized data from receipt images:
-```json
-{
-  "items": [
-    {"name": "Pizza", "quantity": 2, "price": 24.00}
-  ],
-  "total": 24.00,
-  "merchant": "Pizza Palace",
-  "confidence": 0.94
-}
-```
-
-## Min-Cash-Flow Algorithm
-
-The settlement optimization algorithm minimizes transactions:
-
-1. Calculate net balance for each user
-2. Separate users into creditors (+balance) and debtors (-balance)
-3. Match debtors to creditors using greedy approach
-4. Generate minimal set of payment instructions
-
-Example: If A owes B $10 and B owes C $10, suggest A pay C $10 directly.
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Yes | Bot token from @BotFather |
-| `TABLE_NAME` | Yes | DynamoDB table name |
-| `S3_BUCKET_NAME` | Yes | S3 bucket for avatars |
-| `BEDROCK_MODEL_ID` | No | Claude model ID (default: claude-3-5-sonnet) |
-| `AWS_REGION` | No | AWS region (default: us-east-1) |
-| `NODE_ENV` | No | Environment (development/production) |
-| `MINI_APP_URL` | No | Telegram Mini App URL |
-| `ALLOWED_ORIGINS` | No | CORS allowed origins |
 
 ## Scripts
 
 ```bash
-# Frontend
-npm run dev              # Start Vite dev server
-npm run build            # Build frontend for production
-npm run preview          # Preview production build
-npm run typecheck        # TypeScript type checking
-npm run lint             # Run ESLint
+# Development
+npm run dev              # Start frontend (Vite)
+npm run sam:local        # Start backend (SAM + Docker)
 
-# Backend
-npm run sam:build        # Build SAM application
+# Build
+npm run build            # Build frontend
+npm run sam:build        # Build backend
+
+# Deploy
 npm run sam:deploy       # Deploy to AWS
-npm run sam:deploy:guided # Guided deployment (first time)
-npm run sam:local        # Run API locally with SAM
-npm run sam:logs         # Tail Lambda logs
-
-# Testing
-npm run test             # Run tests with Vitest
-npm run test:run         # Run tests once
-npm run test:coverage    # Run tests with coverage
-
-# Deployment
 npm run deploy:frontend  # Deploy frontend to S3
-npm run webhook:set      # Set Telegram webhook
+npm run webhook:set      # Configure Telegram webhook
+
+# Quality
+npm run typecheck        # TypeScript check
+npm run lint             # ESLint
+npm run test             # Vitest
 ```
 
-## Architecture
+## Environment Variables
 
-```
-┌─────────────────┐     ┌──────────────────┐
-│  Telegram Chat  │────▶│  Bot Webhook     │
-│  (ALL messages) │     │  (Grammy)        │
-└─────────────────┘     └────────┬─────────┘
-                                 │
-                        ┌────────▼─────────┐
-                        │  Register User   │
-                        │  + Fetch Avatar  │
-                        └────────┬─────────┘
-                                 │
-                        ┌────────▼─────────┐
-                        │  @mention only?  │
-                        └────────┬─────────┘
-                                 │ yes
-┌─────────────────┐     ┌────────▼─────────┐     ┌─────────────────┐
-│  Mini App (UI)  │────▶│  API Gateway     │────▶│  Hono Lambda    │
-└─────────────────┘     └────────┬─────────┘     └────────┬────────┘
-                                 │                        │
-                        ┌────────▼─────────┐     ┌────────▼────────┐
-                        │   AWS Bedrock    │     │    DynamoDB     │
-                        │  (Claude 3.5)    │     │  (Single Table) │
-                        └──────────────────┘     └─────────────────┘
-                                                          │
-                                                 ┌────────▼────────┐
-                                                 │   S3 Avatars    │
-                                                 └─────────────────┘
-```
-
-## Security
-
-- **Telegram Init Data Validation** - All API requests validated with @grammyjs/validator
-- **HSTS Header** - Strict Transport Security enabled
-- **Rate Limiting** - API rate limiting middleware
-- **Secure IDs** - crypto.randomUUID() for all identifiers
-- **Request Timeouts** - AbortController with 30s timeout on all fetches
-- **Input Validation** - Zod schemas for all API inputs
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Yes | - | Bot token from @BotFather |
+| `TABLE_NAME` | Yes | - | DynamoDB table name |
+| `S3_BUCKET_NAME` | Yes | - | S3 bucket for avatars |
+| `BEDROCK_MODEL_ID` | No | claude-3-5-sonnet | Claude model ID |
+| `AWS_REGION` | No | us-east-1 | AWS region |
+| `NODE_ENV` | No | production | Environment mode |
+| `MINI_APP_URL` | No | - | Telegram Mini App URL |
+| `ALLOWED_ORIGINS` | No | telegram.org | CORS origins |
 
 ## Roadmap
 
-- [x] Multi-language support (EN, RU)
+- [x] AI-powered expense parsing
+- [x] Receipt OCR with Claude Vision
+- [x] Automatic user tracking (all messages)
 - [x] User avatar fetching and S3 storage
 - [x] Smart AI trigger (@mention only)
+- [x] Multi-language support (EN, RU)
+- [x] TON Connect wallet integration
+- [x] Min-cash-flow debt optimization
+- [x] Interactive debt graph visualization
 - [ ] Push notifications for new expenses
 - [ ] Recurring expense templates
 - [ ] Currency conversion
 - [ ] USDT Jetton support
 - [ ] Group analytics dashboard
 - [ ] Export to CSV/PDF
+- [ ] Telegram Mini App inline mode
 
 ## License
 
