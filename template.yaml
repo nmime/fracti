@@ -1,0 +1,320 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Fracti - AI-powered expense splitting and on-chain settlements
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref FractiTable
+        BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
+        TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+
+Parameters:
+  TelegramBotToken:
+    Type: String
+    Description: Telegram Bot Token for webhook authentication
+    NoEcho: true
+    Default: ''
+
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+Resources:
+  # DynamoDB Table
+  FractiTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub fracti-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Application
+          Value: Fracti
+
+  # API Gateway
+  FractiApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - X-Telegram-Init-Data
+          - Authorization
+
+  # Lambda Functions
+
+  # Groups API
+  GroupsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub fracti-groups-${Stage}
+      CodeUri: server/
+      Handler: functions/api/groups.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FractiTable
+      Events:
+        GetGroups:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups
+            Method: GET
+        GetGroup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups/{groupId}
+            Method: GET
+        CreateGroup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: 'es2022'
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - functions/api/groups.ts
+
+  # Expenses API
+  ExpensesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub fracti-expenses-${Stage}
+      CodeUri: server/
+      Handler: functions/api/expenses.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FractiTable
+      Events:
+        GetExpenses:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups/{groupId}/expenses
+            Method: GET
+        CreateExpense:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups/{groupId}/expenses
+            Method: POST
+        DeleteExpense:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups/{groupId}/expenses/{expenseId}
+            Method: DELETE
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: 'es2022'
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - functions/api/expenses.ts
+
+  # Settlements API
+  SettlementsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub fracti-settlements-${Stage}
+      CodeUri: server/
+      Handler: functions/api/settlements.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FractiTable
+      Events:
+        GetDebts:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups/{groupId}/debts
+            Method: GET
+        GetSettlements:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups/{groupId}/settlements
+            Method: GET
+        RecordSettlement:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/groups/{groupId}/settlements
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: 'es2022'
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - functions/api/settlements.ts
+
+  # AI Parser
+  AIParserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub fracti-ai-parser-${Stage}
+      CodeUri: server/
+      Handler: functions/ai/parser.handler
+      Timeout: 60
+      MemorySize: 512
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: '*'
+      Events:
+        Parse:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/ai/parse
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: 'es2022'
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - functions/ai/parser.ts
+
+  # AI Vision (Receipt OCR)
+  AIVisionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub fracti-ai-vision-${Stage}
+      CodeUri: server/
+      Handler: functions/ai/vision.handler
+      Timeout: 90
+      MemorySize: 1024
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: '*'
+      Events:
+        Vision:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/ai/vision
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: 'es2022'
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - functions/ai/vision.ts
+
+  # Telegram Webhook
+  TelegramWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub fracti-telegram-webhook-${Stage}
+      CodeUri: server/
+      Handler: functions/webhooks/telegram.handler
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FractiTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: '*'
+      Events:
+        Webhook:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FractiApi
+            Path: /api/webhooks/telegram
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: 'es2022'
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - functions/webhooks/telegram.ts
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${FractiApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}'
+
+  TableName:
+    Description: DynamoDB table name
+    Value: !Ref FractiTable
+
+  TelegramWebhookUrl:
+    Description: URL to set as Telegram webhook
+    Value: !Sub 'https://${FractiApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/api/webhooks/telegram'
