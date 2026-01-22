@@ -21,6 +21,7 @@
     "recentActivity": "Последние действия",
     "viewAll": "Все",
     "hoursAgo": "{{count}}ч назад",
+    "daysAgo": "{{count}}д назад",
     "minutesAgo": "{{count}}м назад",
     "justNow": "Только что",
     "paid": "оплатил",

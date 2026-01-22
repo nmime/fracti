@@ -15,6 +15,7 @@ Globals:
       Variables:
         NODE_ENV: !Ref Stage
         TABLE_NAME: !Ref FractiTable
+        S3_BUCKET_NAME: !Ref AvatarsBucket
         BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
         TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
 
@@ -57,6 +58,10 @@ Resources:
           AttributeType: S
         - AttributeName: GSI1SK
           AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
       KeySchema:
         - AttributeName: PK
           KeyType: HASH
@@ -68,6 +73,15 @@ Resources:
             - AttributeName: GSI1PK
               KeyType: HASH
             - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # GSI2: Lookup expenses and settlements by ID
+        - IndexName: GSI2
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
@@ -117,6 +131,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FractiTable
+        - S3CrudPolicy:
+            BucketName: !Ref AvatarsBucket
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -150,6 +166,50 @@ Resources:
           - index.ts
         External:
           - '@aws-sdk/*'
+
+  #############################################
+  # S3 Bucket for User Avatars
+  #############################################
+  AvatarsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub fracti-avatars-${AWS::AccountId}-${Stage}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - '*'
+            MaxAge: 86400
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldAvatars
+            Status: Enabled
+            ExpirationInDays: 365
+      Tags:
+        - Key: Application
+          Value: Fracti
+        - Key: Environment
+          Value: !Ref Stage
+
+  AvatarsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AvatarsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub ${AvatarsBucket.Arn}/*
 
   #############################################
   # CloudWatch Log Group
@@ -259,3 +319,11 @@ Outputs:
     Description: CloudFront distribution domain
     Condition: IsProduction
     Value: !GetAtt FrontendDistribution.DomainName
+
+  AvatarsBucketName:
+    Description: S3 bucket for user avatars
+    Value: !Ref AvatarsBucket
+
+  AvatarsBucketUrl:
+    Description: S3 bucket URL for avatars
+    Value: !Sub 'https://${AvatarsBucket}.s3.${AWS::Region}.amazonaws.com'

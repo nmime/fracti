@@ -1,5 +1,11 @@
 import type { ExpenseRecord, SettlementRecord, UserRecord } from './dynamodb'
 
+/**
+ * Minimum balance threshold for debt calculations.
+ * Balances below this are considered settled (handles floating point precision).
+ */
+const BALANCE_THRESHOLD = 0.01
+
 export interface DebtNode {
   id: string
   name: string
@@ -99,9 +105,9 @@ export function buildDebtGraph(
       wallet: member.wallet,
     })
 
-    if (balance > 0.01) {
+    if (balance > BALANCE_THRESHOLD) {
       creditors.push({ id: userId, amount: balance })
-    } else if (balance < -0.01) {
+    } else if (balance < -BALANCE_THRESHOLD) {
       debtors.push({ id: userId, amount: -balance })
     }
   }
@@ -120,7 +126,7 @@ export function buildDebtGraph(
 
     const amount = Math.min(debtor.amount, creditor.amount)
 
-    if (amount > 0.01) {
+    if (amount > BALANCE_THRESHOLD) {
       edges.push({
         from: debtor.id,
         to: creditor.id,
@@ -131,8 +137,8 @@ export function buildDebtGraph(
     debtor.amount -= amount
     creditor.amount -= amount
 
-    if (debtor.amount < 0.01) i++
-    if (creditor.amount < 0.01) j++
+    if (debtor.amount < BALANCE_THRESHOLD) i++
+    if (creditor.amount < BALANCE_THRESHOLD) j++
   }
 
   return { nodes, edges }
@@ -154,9 +160,9 @@ export function optimizeSettlements(
   const debtors: Array<{ id: string; amount: number }> = []
 
   for (const [userId, balance] of balances) {
-    if (balance > 0.01) {
+    if (balance > BALANCE_THRESHOLD) {
       creditors.push({ id: userId, amount: balance })
-    } else if (balance < -0.01) {
+    } else if (balance < -BALANCE_THRESHOLD) {
       debtors.push({ id: userId, amount: -balance })
     }
   }
@@ -183,7 +189,7 @@ export function optimizeSettlements(
 
     const amount = Math.min(debtor.amount, creditor.amount)
 
-    if (amount > 0.01) {
+    if (amount > BALANCE_THRESHOLD) {
       settlements.push({
         fromUserId: debtor.id,
         fromUserName: debtorMember.name,
@@ -196,8 +202,8 @@ export function optimizeSettlements(
     debtor.amount -= amount
     creditor.amount -= amount
 
-    if (debtor.amount < 0.01) i++
-    if (creditor.amount < 0.01) j++
+    if (debtor.amount < BALANCE_THRESHOLD) i++
+    if (creditor.amount < BALANCE_THRESHOLD) j++
   }
 
   return settlements

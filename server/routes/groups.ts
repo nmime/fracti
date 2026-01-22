@@ -11,6 +11,7 @@ import {
   upsertUser,
   getGroupMembers,
 } from '../lib/dynamodb'
+import { transformAvatarUrl } from '../lib/s3'
 import { authMiddleware, requireAuth, getDevUser } from '../middleware/auth'
 import {
   groupIdParamSchema,
@@ -44,6 +45,7 @@ groupsRoutes.get('/', requireAuth, async (c) => {
 // GET /api/groups/:groupId - Get single group with members
 groupsRoutes.get(
   '/:groupId',
+  requireAuth,
   zValidator('param', groupIdParamSchema),
   async (c) => {
     const { groupId } = c.req.valid('param')
@@ -65,6 +67,7 @@ groupsRoutes.get(
           name: m.name,
           username: m.username,
           wallet: m.wallet,
+          avatarUrl: transformAvatarUrl(m.avatarUrl),
         })),
       },
     })

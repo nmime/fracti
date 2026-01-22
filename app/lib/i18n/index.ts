@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
+import WebApp from '@twa-dev/sdk'
 
 import en from './locales/en.json'
 import ru from './locales/ru.json'
@@ -8,15 +9,15 @@ import ru from './locales/ru.json'
 // Get language from Telegram WebApp if available
 const getTelegramLanguage = (): string | undefined => {
   try {
-    const webApp = (window as any).Telegram?.WebApp
-    if (webApp?.initDataUnsafe?.user?.language_code) {
-      const lang = webApp.initDataUnsafe.user.language_code
+    const user = WebApp.initDataUnsafe?.user
+    if (user?.language_code) {
+      const lang = user.language_code
       // Map language codes to our supported locales
       if (lang.startsWith('ru')) return 'ru'
       return 'en' // Default to English
     }
   } catch {
-    // Ignore errors
+    // Ignore errors - WebApp may not be available outside Telegram
   }
   return undefined
 }
@@ -54,5 +55,9 @@ export const getCurrentLanguage = () => i18n.language || 'en'
 // Helper to change language
 export const changeLanguage = (lang: 'en' | 'ru') => {
   i18n.changeLanguage(lang)
-  localStorage.setItem('fracti-lang', lang)
+  try {
+    localStorage.setItem('fracti-lang', lang)
+  } catch {
+    // localStorage may be unavailable in private browsing mode
+  }
 }

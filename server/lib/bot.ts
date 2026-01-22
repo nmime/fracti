@@ -1,10 +1,11 @@
 import { Bot, Context, InlineKeyboard, webhookCallback } from 'grammy'
-import type { Chat } from 'grammy/types'
+import type { Chat, User } from 'grammy/types'
 import { randomUUID } from 'crypto'
 import {
   getGroup,
   createGroup,
   upsertUser,
+  getUser,
   createExpense,
   getGroupMembers,
 } from './dynamodb'
@@ -14,7 +15,8 @@ import {
   PARSER_SYSTEM_PROMPT,
   VISION_SYSTEM_PROMPT,
 } from './bedrock'
-import { downloadFile } from './telegram'
+import { downloadFile, downloadUserProfilePhoto } from './telegram'
+import { uploadAvatar } from './s3'
 import { createTranslator, getLocaleFromLanguageCode } from './i18n'
 import { config } from './config'
 import { logger } from './logger'
@@ -48,6 +50,45 @@ export const bot = new Bot(BOT_TOKEN)
 function getT(ctx: Context) {
   const locale = getLocaleFromLanguageCode(ctx.from?.language_code)
   return createTranslator(locale)
+}
+
+/**
+ * Register or update a user in the group, fetching their avatar if needed
+ */
+async function registerUserWithAvatar(
+  groupId: string,
+  user: User
+): Promise<void> {
+  const telegramId = user.id
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ')
+
+  // Check if user already exists and has an avatar
+  const existingUser = await getUser(groupId, telegramId)
+
+  let avatarUrl = existingUser?.avatarUrl
+
+  // Fetch avatar if user doesn't have one yet
+  if (!avatarUrl) {
+    try {
+      const photo = await downloadUserProfilePhoto(telegramId)
+      if (photo) {
+        avatarUrl = await uploadAvatar(telegramId, photo.buffer, photo.mimeType)
+        logger.info('Uploaded user avatar', { telegramId, avatarUrl })
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch/upload avatar', { telegramId }, error)
+      // Continue without avatar - not critical
+    }
+  }
+
+  // Upsert user with avatar
+  await upsertUser(groupId, {
+    id: String(telegramId),
+    telegramId,
+    name,
+    username: user.username,
+    avatarUrl,
+  })
 }
 
 // Command handlers
@@ -160,33 +201,39 @@ bot.command('add', async (ctx) => {
   )
 })
 
-// Handle text messages (expense parsing)
+// Handle ALL text messages - register users and parse expenses when mentioned
 bot.on('message:text', async (ctx) => {
   // Skip commands and private chats
   if (ctx.message.text.startsWith('/')) return
   if (ctx.chat.type === 'private') return
 
+  const chatId = ctx.chat?.id
+  const user = ctx.from
+  if (!chatId || !user) return
+
+  const groupId = String(chatId)
+
+  // Always ensure group exists
+  let group = await getGroup(groupId)
+  if (!group) {
+    group = await createGroup({
+      id: groupId,
+      chatId: groupId,
+      title: getChatTitle(ctx.chat),
+      createdAt: new Date().toISOString(),
+      memberCount: 1,
+    })
+  }
+
+  // Register user with avatar from every message (capture ALL users)
+  await registerUserWithAvatar(groupId, user)
+
+  // Only process expense via AI when bot is @mentioned
+  const botUsername = ctx.me.username.toLowerCase()
   const text = ctx.message.text.toLowerCase()
+  const isBotMentioned = text.includes(`@${botUsername}`)
 
-  // Check if message looks like an expense (multilingual patterns)
-  const isExpenseMessage =
-    text.includes('@fracti') ||
-    // English patterns
-    text.includes('paid') ||
-    text.includes('spent') ||
-    text.includes('bought') ||
-    text.includes('split') ||
-    // Russian patterns
-    text.includes('заплатил') ||
-    text.includes('заплатила') ||
-    text.includes('потратил') ||
-    text.includes('потратила') ||
-    text.includes('купил') ||
-    text.includes('купила') ||
-    text.includes('раздели') ||
-    /\d+\s*(ton|usd|eur|rub|руб|\$|€|₽)/i.test(ctx.message.text)
-
-  if (!isExpenseMessage) return
+  if (!isBotMentioned) return
 
   await handleExpenseMessage(ctx)
 })
@@ -194,6 +241,27 @@ bot.on('message:text', async (ctx) => {
 // Handle photo messages (receipt scanning)
 bot.on('message:photo', async (ctx) => {
   if (ctx.chat.type === 'private') return
+
+  const chatId = ctx.chat?.id
+  const user = ctx.from
+  if (!chatId || !user) return
+
+  const groupId = String(chatId)
+
+  // Always ensure group exists
+  let group = await getGroup(groupId)
+  if (!group) {
+    group = await createGroup({
+      id: groupId,
+      chatId: groupId,
+      title: getChatTitle(ctx.chat),
+      createdAt: new Date().toISOString(),
+      memberCount: 1,
+    })
+  }
+
+  // Register user with avatar from every message (capture ALL users)
+  await registerUserWithAvatar(groupId, user)
 
   await handlePhotoMessage(ctx)
 })
@@ -208,25 +276,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 
   const groupId = String(chatId)
 
-  // Ensure group exists
-  let group = await getGroup(groupId)
-  if (!group) {
-    group = await createGroup({
-      id: groupId,
-      chatId: groupId,
-      title: getChatTitle(ctx.chat),
-      createdAt: new Date().toISOString(),
-      memberCount: 1,
-    })
-  }
-
-  // Register user
-  await upsertUser(groupId, {
-    id: String(user.id),
-    telegramId: user.id,
-    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
-    username: user.username,
-  })
+  // Group and user are already registered in the main message handler
 
   try {
     const response = await invokeClaudeText(PARSER_SYSTEM_PROMPT, text)
@@ -326,25 +376,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
   const groupId = String(chatId)
   const photo = photos[photos.length - 1] // Get largest photo
 
-  // Ensure group exists
-  let group = await getGroup(groupId)
-  if (!group) {
-    group = await createGroup({
-      id: groupId,
-      chatId: groupId,
-      title: getChatTitle(ctx.chat),
-      createdAt: new Date().toISOString(),
-      memberCount: 1,
-    })
-  }
-
-  // Register user
-  await upsertUser(groupId, {
-    id: String(user.id),
-    telegramId: user.id,
-    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
-    username: user.username,
-  })
+  // Group and user are already registered in the main photo handler
 
   try {
     const imageBuffer = await downloadFile(photo.file_id)

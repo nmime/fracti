@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
 import { useTonPayment } from '@/lib/ton'
-import { type Settlement } from '@/lib/api'
+import { type Settlement, api } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
-import { createDemoSettlements, demoWalletAddresses } from '@/lib/fixtures'
+import { createDemoSettlements, demoWalletAddresses, demoGroup } from '@/lib/fixtures'
 import { SettlementCard } from '@/components/SettlementCard'
 import { WalletButton } from '@/components/WalletButton'
 import { Card, CardContent } from '@/components/ui/card'
@@ -21,20 +21,59 @@ export default function SettlePage() {
   const { isConnected, sendTransaction } = useTonPayment()
   const [settlements, setSettlements] = useState<Settlement[]>(() => createDemoSettlements())
   const [payingId, setPayingId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Use Telegram user ID when available, fallback to demo user '1' for development
   const currentUserId = user?.id ? String(user.id) : '1'
+  // In production, get groupId from route params (e.g., useParams()) or Telegram start_param
+  const groupId = demoGroup.id
 
-  const pendingSettlements = settlements.filter((s) => s.status === 'pending')
-  const completedSettlements = settlements.filter((s) => s.status === 'completed')
+  // Fetch settlements from API on mount
+  useEffect(() => {
+    const abortController = new AbortController()
 
-  const totalOwed = pendingSettlements
-    .filter((s) => s.fromUserId === currentUserId)
-    .reduce((sum, s) => sum + s.amount, 0)
+    const loadSettlements = async () => {
+      setIsLoading(true)
+      try {
+        const data = await api.getSettlements(groupId)
+        if (!abortController.signal.aborted) {
+          setSettlements(data)
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+        logger.error('Failed to load settlements', { groupId }, err)
+        // Keep demo data on error
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoading(false)
+        }
+      }
+    }
+    loadSettlements()
 
-  const totalToReceive = pendingSettlements
-    .filter((s) => s.toUserId === currentUserId)
-    .reduce((sum, s) => sum + s.amount, 0)
+    return () => abortController.abort()
+  }, [groupId])
+
+  // Memoize settlement calculations to avoid recalculation on every render
+  const { pendingSettlements, completedSettlements, totalOwed, totalToReceive } = useMemo(() => {
+    const pending = settlements.filter((s) => s.status === 'pending')
+    const completed = settlements.filter((s) => s.status === 'completed')
+
+    const owed = pending
+      .filter((s) => s.fromUserId === currentUserId)
+      .reduce((sum, s) => sum + s.amount, 0)
+
+    const toReceive = pending
+      .filter((s) => s.toUserId === currentUserId)
+      .reduce((sum, s) => sum + s.amount, 0)
+
+    return {
+      pendingSettlements: pending,
+      completedSettlements: completed,
+      totalOwed: owed,
+      totalToReceive: toReceive,
+    }
+  }, [settlements, currentUserId])
 
   const handlePay = async (settlement: Settlement) => {
     if (!isConnected) {
@@ -66,7 +105,14 @@ export default function SettlePage() {
         comment: `Fracti Settlement #${settlement.id}`,
       })
 
-      // Update settlement status
+      // Confirm settlement with the API
+      try {
+        await api.confirmSettlement(groupId, settlement.id, boc)
+      } catch (apiErr) {
+        logger.warn('Failed to confirm settlement with API, updating locally', { settlementId: settlement.id }, apiErr)
+      }
+
+      // Update local settlement status
       setSettlements((prev) =>
         prev.map((s) =>
           s.id === settlement.id
@@ -84,8 +130,6 @@ export default function SettlePage() {
         }),
         variant: 'success',
       })
-
-      // In production: await api.recordSettlement('demo', { ... })
     } catch (error) {
       logger.error('Payment failed', { settlementId: settlement.id }, error)
       hapticFeedback.notificationOccurred('error')
@@ -147,25 +191,34 @@ export default function SettlePage() {
       {/* Settlements List */}
       <ScrollArea className="flex-1">
         <div className="space-y-6 p-4 pb-20">
-          {/* Pending Settlements */}
-          {pendingSettlements.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                {t('settle.pending', { count: pendingSettlements.length })}
-              </h2>
-              {pendingSettlements.map((settlement) => (
-                <SettlementCard
-                  key={settlement.id}
-                  settlement={settlement}
-                  currentUserId={currentUserId}
-                  onPay={handlePay}
-                  isLoading={payingId === settlement.id}
-                />
-              ))}
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="flex h-40 items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
+          ) : (
+            <>
+              {/* Pending Settlements */}
+              {pendingSettlements.length > 0 && (
+                <div className="space-y-3">
+                  <h2 className="text-sm font-medium text-muted-foreground">
+                    {t('settle.pending', { count: pendingSettlements.length })}
+                  </h2>
+                  {pendingSettlements.map((settlement) => (
+                    <SettlementCard
+                      key={settlement.id}
+                      settlement={settlement}
+                      currentUserId={currentUserId}
+                      onPay={handlePay}
+                      isLoading={payingId === settlement.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
-          {pendingSettlements.length === 0 && (
+          {!isLoading && pendingSettlements.length === 0 && (
             <Card className="border-green-200 bg-green-50/50">
               <CardContent className="flex flex-col items-center gap-2 py-8">
                 <CheckCircle className="h-12 w-12 text-green-500" />
@@ -178,7 +231,7 @@ export default function SettlePage() {
           )}
 
           {/* Completed Settlements */}
-          {completedSettlements.length > 0 && (
+          {!isLoading && completedSettlements.length > 0 && (
             <div className="space-y-3">
               <Separator />
               <h2 className="text-sm font-medium text-muted-foreground">

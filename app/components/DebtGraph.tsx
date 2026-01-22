@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import ForceGraph2D, { ForceGraphMethods } from 'react-force-graph-2d'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ForceGraph2D, { type ForceGraphMethods, type NodeObject, type LinkObject } from 'react-force-graph-2d'
 import type { DebtGraph as DebtGraphType } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 
@@ -38,11 +38,11 @@ interface DebtGraphProps {
 }
 
 export function DebtGraph({ data, onNodeClick, width = 350, height = 300 }: DebtGraphProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const graphRef = useRef<ForceGraphMethods<any, any>>()
+  const graphRef = useRef<ForceGraphMethods<NodeObject<GraphNode>, LinkObject<GraphNode, GraphLink>>>(undefined)
   const [dimensions, setDimensions] = useState({ width, height })
 
-  const graphData = {
+  // Memoize graph data to prevent unnecessary re-renders of the force graph
+  const graphData = useMemo(() => ({
     nodes: data.nodes.map((node) => ({
       id: node.id,
       name: node.name,
@@ -54,7 +54,7 @@ export function DebtGraph({ data, onNodeClick, width = 350, height = 300 }: Debt
       target: edge.to,
       amount: edge.amount,
     })),
-  }
+  }), [data.nodes, data.edges])
 
   useEffect(() => {
     const handleResize = () => {

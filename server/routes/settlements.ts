@@ -8,6 +8,7 @@ import {
   getAllExpenses,
   getAllSettlements,
   getSettlements,
+  getSettlementById,
   createSettlement,
   updateSettlementStatus,
   getGroup,
@@ -178,16 +179,16 @@ settlementsRoutes.put(
     const { groupId, settlementId } = c.req.valid('param')
     const { txHash, status } = c.req.valid('json')
 
-    const group = await getGroup(groupId)
-    if (!group) {
-      throw new HTTPException(404, { message: 'Group not found' })
-    }
-
-    const settlements = await getAllSettlements(groupId)
-    const settlement = settlements.find((s) => s.id === settlementId)
+    // Use GSI2 for O(1) lookup by settlement ID
+    const settlement = await getSettlementById(settlementId)
 
     if (!settlement) {
       throw new HTTPException(404, { message: 'Settlement not found' })
+    }
+
+    // Verify settlement belongs to the requested group
+    if (settlement.groupId !== groupId) {
+      throw new HTTPException(404, { message: 'Settlement not found in this group' })
     }
 
     // Verify the user is the sender of the settlement

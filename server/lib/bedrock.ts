@@ -56,7 +56,10 @@ export async function invokeClaudeText(
     const rawBody = JSON.parse(new TextDecoder().decode(response.body))
     responseBody = claudeResponseSchema.parse(rawBody)
   } catch (error) {
-    logger.error('Invalid Bedrock response format', {}, error)
+    logger.error('Invalid Bedrock response format', {
+      modelId: MODEL_ID,
+      promptLength: userMessage.length,
+    }, error)
     throw new Error('Invalid response from AI model')
   }
 
@@ -114,7 +117,11 @@ export async function invokeClaudeVision(
     const rawBody = JSON.parse(new TextDecoder().decode(response.body))
     responseBody = claudeResponseSchema.parse(rawBody)
   } catch (error) {
-    logger.error('Invalid Bedrock vision response format', {}, error)
+    logger.error('Invalid Bedrock vision response format', {
+      modelId: MODEL_ID,
+      mediaType,
+      imageSize: imageBase64.length,
+    }, error)
     throw new Error('Invalid response from AI model')
   }
 

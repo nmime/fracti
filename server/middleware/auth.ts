@@ -61,8 +61,8 @@ async function extractTelegramUser(c: Context): Promise<AuthResult> {
         method = 'widget'
         return { user, method }
       }
-    } catch {
-      // Invalid JSON in header, continue
+    } catch (error) {
+      logger.debug('Invalid JSON in widget data header', { error })
     }
   }
 
@@ -81,8 +81,8 @@ async function extractTelegramUser(c: Context): Promise<AuthResult> {
         return { user, method }
       }
     }
-  } catch {
-    // URL parsing failed, continue
+  } catch (error) {
+    logger.debug('URL parsing failed for widget data', { url: c.req.url, error })
   }
 
   // Development mode: return demo user

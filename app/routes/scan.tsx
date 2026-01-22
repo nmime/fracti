@@ -49,6 +49,14 @@ export default function ScanPage() {
       }
       await processReceipt(base64)
     }
+    reader.onerror = () => {
+      toast({
+        title: t('toast.scanError.title'),
+        description: t('toast.scanError.description'),
+        variant: 'destructive',
+      })
+      setPreviewUrl(null)
+    }
     reader.readAsDataURL(file)
   }
 
@@ -177,7 +185,7 @@ export default function ScanPage() {
             <Card className="w-full max-w-sm overflow-hidden">
               <img
                 src={previewUrl}
-                alt="Receipt preview"
+                alt={t('scan.analyzing')}
                 className="h-64 w-full object-cover"
               />
               <CardContent className="flex flex-col items-center gap-2 py-6">
@@ -192,8 +200,17 @@ export default function ScanPage() {
             </Card>
           ) : (
             <Card
-              className="w-full max-w-sm cursor-pointer border-dashed transition-colors hover:border-primary hover:bg-primary/5"
+              className="w-full max-w-sm cursor-pointer border-dashed transition-colors hover:border-primary hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary"
               onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  fileInputRef.current?.click()
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label={t('scan.uploadCta')}
             >
               <CardContent className="flex flex-col items-center gap-4 py-12">
                 <div className="rounded-full bg-primary/10 p-4">
@@ -229,6 +246,10 @@ export default function ScanPage() {
                 onChange={(e) => setTextInput(e.target.value)}
                 className="flex-1"
                 onKeyDown={(e) => e.key === 'Enter' && handleParseText()}
+                autoComplete="off"
+                autoCorrect="on"
+                enterKeyHint="send"
+                aria-label={t('scan.orType')}
               />
               <Button
                 variant="ton"
@@ -283,8 +304,18 @@ export default function ScanPage() {
                     return (
                       <button
                         key={index}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        aria-label={`${item.name}, ${formatTON(item.price)} TON`}
                         onClick={() => toggleItem(index)}
-                        className={`flex w-full items-center justify-between p-4 text-left transition-colors ${
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            toggleItem(index)
+                          }
+                        }}
+                        className={`flex w-full items-center justify-between p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
                           isSelected ? 'bg-primary/5' : 'hover:bg-muted/50'
                         }`}
                       >

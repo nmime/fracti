@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
-import { type Expense, type User, type CreateExpenseInput } from '@/lib/api'
-import { demoMembers, createDemoExpenses } from '@/lib/fixtures'
+import { type Expense, type User, type CreateExpenseInput, api } from '@/lib/api'
+import { demoMembers, createDemoExpenses, demoGroup } from '@/lib/fixtures'
+import { logger } from '@/lib/logger'
 import { ExpenseCard } from '@/components/ExpenseCard'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
 import { Input } from '@/components/ui/input'
@@ -16,33 +17,69 @@ export default function ExpensesPage() {
   const { user } = useTelegram()
   const { toast } = useToast()
   const [expenses, setExpenses] = useState<Expense[]>(() => createDemoExpenses())
-  const [members] = useState<User[]>(demoMembers)
+  const [members, setMembers] = useState<User[]>(demoMembers)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
-  const [isLoading] = useState(false) // TODO: Implement loading state when fetching from API
+  const [isLoading, setIsLoading] = useState(false)
 
   // Use Telegram user ID when available, fallback to demo user '1' for development
   const currentUserId = user?.id ? String(user.id) : '1'
+  // In production, get from route params (e.g., useParams()) or Telegram start_param
+  const groupId = demoGroup.id
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesSearch = expense.description
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+  // Fetch group data (including members) and expenses from API on mount
+  useEffect(() => {
+    const abortController = new AbortController()
 
-    if (!matchesSearch) return false
-
-    switch (filter) {
-      case 'mine':
-        return expense.payerId === currentUserId
-      case 'owe':
-        return (
-          expense.payerId !== currentUserId &&
-          expense.splits.some((s) => s.userId === currentUserId)
-        )
-      default:
-        return true
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        // Fetch group (with members) and expenses in parallel
+        const [groupData, expensesData] = await Promise.all([
+          api.getGroup(groupId),
+          api.getExpenses(groupId),
+        ])
+        if (!abortController.signal.aborted) {
+          setMembers(groupData.members)
+          setExpenses(expensesData)
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+        logger.error('Failed to load group data', { groupId }, err)
+        // Keep demo data on error
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoading(false)
+        }
+      }
     }
-  })
+    loadData()
+
+    return () => abortController.abort()
+  }, [groupId])
+
+  // Memoize filtered expenses to avoid recalculation on every render
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const matchesSearch = expense.description
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+
+      if (!matchesSearch) return false
+
+      switch (filter) {
+        case 'mine':
+          return expense.payerId === currentUserId
+        case 'owe':
+          return (
+            expense.payerId !== currentUserId &&
+            expense.splits.some((s) => s.userId === currentUserId)
+          )
+        default:
+          return true
+      }
+    })
+  }, [expenses, searchQuery, filter, currentUserId])
 
   const handleAddExpense = async (data: CreateExpenseInput) => {
     try {
@@ -71,7 +108,8 @@ export default function ExpensesPage() {
         }),
         variant: 'success',
       })
-    } catch (error) {
+    } catch (err) {
+      logger.error('Failed to add expense', { groupId }, err)
       toast({
         title: t('toast.expenseError.title'),
         description: t('toast.expenseError.description'),
@@ -88,7 +126,8 @@ export default function ExpensesPage() {
         title: t('toast.expenseDeleted.title'),
         variant: 'success',
       })
-    } catch (error) {
+    } catch (err) {
+      logger.error('Failed to delete expense', { groupId, expenseId: id }, err)
       toast({
         title: t('toast.deleteError.title'),
         variant: 'destructive',

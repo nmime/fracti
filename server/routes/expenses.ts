@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto'
 import type { Env } from '../lib/factory'
 import {
   getExpenses,
-  getAllExpenses,
+  getExpenseById,
   createExpense,
   deleteExpense,
   getGroup,
@@ -30,15 +30,24 @@ expensesRoutes.use('*', authMiddleware)
 // GET /api/groups/:groupId/expenses - List expenses for a group (paginated)
 expensesRoutes.get(
   '/:groupId/expenses',
+  requireAuth,
   zValidator('param', groupIdParamSchema),
   zValidator('query', paginationQuerySchema),
   async (c) => {
+    const telegramUser = c.get('telegramUser') || getDevUser()
     const { groupId } = c.req.valid('param')
     const { limit, cursor } = c.req.valid('query')
 
     const group = await getGroup(groupId)
     if (!group) {
       throw new HTTPException(404, { message: 'Group not found' })
+    }
+
+    // Verify user is a member of the group
+    const members = await getGroupMembers(groupId)
+    const isMember = members.some((m) => m.id === String(telegramUser.id))
+    if (!isMember) {
+      throw new HTTPException(403, { message: 'You are not a member of this group' })
     }
 
     const result = await getExpenses(groupId, {
@@ -120,22 +129,29 @@ expensesRoutes.post(
 // GET /api/groups/:groupId/expenses/:expenseId - Get single expense
 expensesRoutes.get(
   '/:groupId/expenses/:expenseId',
+  requireAuth,
   zValidator('param', expenseIdParamSchema),
   async (c) => {
+    const telegramUser = c.get('telegramUser') || getDevUser()
     const { groupId, expenseId } = c.req.valid('param')
 
-    const group = await getGroup(groupId)
-    if (!group) {
-      throw new HTTPException(404, { message: 'Group not found' })
-    }
-
-    // Note: For single expense lookup, we need to scan all expenses
-    // Consider adding a GSI on expense ID for more efficient lookups
-    const expenses = await getAllExpenses(groupId)
-    const expense = expenses.find((e) => e.id === expenseId)
+    // Use GSI2 for O(1) lookup by expense ID
+    const expense = await getExpenseById(expenseId)
 
     if (!expense) {
       throw new HTTPException(404, { message: 'Expense not found' })
+    }
+
+    // Verify expense belongs to the requested group
+    if (expense.groupId !== groupId) {
+      throw new HTTPException(404, { message: 'Expense not found in this group' })
+    }
+
+    // Verify user is a member of the group
+    const members = await getGroupMembers(groupId)
+    const isMember = members.some((m) => m.id === String(telegramUser.id))
+    if (!isMember) {
+      throw new HTTPException(403, { message: 'You are not a member of this group' })
     }
 
     return c.json({ success: true, data: expense })
@@ -151,18 +167,16 @@ expensesRoutes.delete(
     const telegramUser = c.get('telegramUser') || getDevUser()
     const { groupId, expenseId } = c.req.valid('param')
 
-    const group = await getGroup(groupId)
-    if (!group) {
-      throw new HTTPException(404, { message: 'Group not found' })
-    }
-
-    // Note: For single expense lookup, we need to scan all expenses
-    // Consider adding a GSI on expense ID for more efficient lookups
-    const expenses = await getAllExpenses(groupId)
-    const expense = expenses.find((e) => e.id === expenseId)
+    // Use GSI2 for O(1) lookup by expense ID
+    const expense = await getExpenseById(expenseId)
 
     if (!expense) {
       throw new HTTPException(404, { message: 'Expense not found' })
+    }
+
+    // Verify expense belongs to the requested group
+    if (expense.groupId !== groupId) {
+      throw new HTTPException(404, { message: 'Expense not found in this group' })
     }
 
     // Only allow payer to delete
