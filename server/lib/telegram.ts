@@ -1,4 +1,4 @@
-import crypto from 'crypto'
+import { validate, parse } from '@grammyjs/validator'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 
@@ -49,86 +49,98 @@ export interface TelegramUpdate {
   }
 }
 
+export interface ValidatedInitData {
+  user: TelegramUser
+  chat_instance?: string
+  chat_type?: string
+  auth_date: number
+  hash: string
+  query_id?: string
+  start_param?: string
+}
+
 /**
- * Validate Telegram Mini App init data
+ * Validate Telegram Mini App init data using @grammyjs/validator
  */
 export function validateInitData(initData: string): TelegramUser | null {
   if (!BOT_TOKEN || !initData) return null
 
   try {
-    const urlParams = new URLSearchParams(initData)
-    const hash = urlParams.get('hash')
-    if (!hash) return null
+    // Validate the init data
+    const isValid = validate(initData, BOT_TOKEN)
+    if (!isValid) return null
 
-    // Remove hash from params
-    urlParams.delete('hash')
+    // Parse the validated data
+    const data = parse(initData)
 
-    // Sort params and create data check string
-    const params = Array.from(urlParams.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => `${key}=${value}`)
-      .join('\n')
+    if (!data.user) return null
 
-    // Create secret key
-    const secretKey = crypto
-      .createHmac('sha256', 'WebAppData')
-      .update(BOT_TOKEN)
-      .digest()
-
-    // Validate hash
-    const calculatedHash = crypto
-      .createHmac('sha256', secretKey)
-      .update(params)
-      .digest('hex')
-
-    if (calculatedHash !== hash) {
-      return null
+    return {
+      id: data.user.id,
+      first_name: data.user.first_name,
+      last_name: data.user.last_name,
+      username: data.user.username,
+      language_code: data.user.language_code,
+      is_premium: data.user.is_premium,
+      photo_url: data.user.photo_url,
     }
-
-    // Parse user data
-    const userStr = urlParams.get('user')
-    if (!userStr) return null
-
-    return JSON.parse(userStr) as TelegramUser
-  } catch {
+  } catch (error) {
+    console.error('Init data validation error:', error)
     return null
   }
 }
 
 /**
- * Send a message via Telegram Bot API
+ * Validate Telegram Login Widget data
+ * Widget data comes as query params: id, first_name, last_name, username, photo_url, auth_date, hash
  */
-export async function sendMessage(
-  chatId: number | string,
-  text: string,
-  options?: {
-    parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2'
-    reply_to_message_id?: number
-    reply_markup?: Record<string, unknown>
-  }
-): Promise<void> {
-  if (!BOT_TOKEN) {
-    console.warn('TELEGRAM_BOT_TOKEN not set, skipping message')
-    return
-  }
+export function validateWidgetData(data: Record<string, string>): TelegramUser | null {
+  if (!BOT_TOKEN || !data.hash || !data.id || !data.auth_date) return null
 
-  const response = await fetch(
-    `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        ...options,
-      }),
+  try {
+    // Build data check string (all fields except hash, sorted alphabetically)
+    const checkFields = Object.entries(data)
+      .filter(([key]) => key !== 'hash')
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n')
+
+    // Create secret key using SHA-256 of bot token
+    const crypto = require('crypto')
+    const secretKey = crypto
+      .createHash('sha256')
+      .update(BOT_TOKEN)
+      .digest()
+
+    // Calculate HMAC-SHA-256
+    const calculatedHash = crypto
+      .createHmac('sha256', secretKey)
+      .update(checkFields)
+      .digest('hex')
+
+    if (calculatedHash !== data.hash) {
+      console.warn('Widget hash mismatch')
+      return null
     }
-  )
 
-  if (!response.ok) {
-    const error = await response.text()
-    console.error('Failed to send Telegram message:', error)
-    throw new Error(`Telegram API error: ${response.status}`)
+    // Check auth_date is not too old (allow 1 day)
+    const authDate = parseInt(data.auth_date, 10)
+    const now = Math.floor(Date.now() / 1000)
+    if (now - authDate > 86400) {
+      console.warn('Widget auth_date too old')
+      return null
+    }
+
+    return {
+      id: parseInt(data.id, 10),
+      first_name: data.first_name || '',
+      last_name: data.last_name,
+      username: data.username,
+      photo_url: data.photo_url,
+    }
+  } catch (error) {
+    console.error('Widget validation error:', error)
+    return null
   }
 }
 

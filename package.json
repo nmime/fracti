@@ -10,15 +10,19 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
-    "build:server": "esbuild server/functions/**/*.ts --bundle --platform=node --target=node20 --outdir=.aws-sam/build --format=esm --external:@aws-sdk/*",
     "sam:build": "sam build",
-    "sam:deploy": "sam deploy --guided",
-    "sam:local": "sam local start-api"
+    "sam:deploy": "sam deploy",
+    "sam:deploy:guided": "sam deploy --guided",
+    "sam:local": "sam local start-api --warm-containers EAGER",
+    "sam:logs": "sam logs --tail",
+    "deploy:frontend": "npm run build && aws s3 sync dist/ s3://$(aws cloudformation describe-stacks --stack-name fracti --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' --output text) --delete",
+    "webhook:set": "curl -X POST \"https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook\" -d \"url=$(aws cloudformation describe-stacks --stack-name fracti --query 'Stacks[0].Outputs[?OutputKey==`TelegramWebhookUrl`].OutputValue' --output text)\""
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.500.0",
     "@aws-sdk/client-dynamodb": "^3.500.0",
     "@aws-sdk/lib-dynamodb": "^3.500.0",
+    "@grammyjs/validator": "^0.2.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -34,6 +38,8 @@
     "@twa-dev/sdk": "^7.2.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "grammy": "^1.21.0",
+    "hono": "^4.0.0",
     "lucide-react": "^0.312.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -44,6 +50,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.131",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",

@@ -23,8 +23,9 @@ Fracti is an AI-powered Telegram Mini App that turns unstructured group chat cha
 - **@twa-dev/sdk** - Telegram Mini App SDK
 - **@tonconnect/ui-react** - TON wallet integration
 
-### Backend (AWS Serverless)
-- **AWS Lambda** - Node.js 20.x functions
+### Backend (AWS Serverless + Hono)
+- **Hono** - Lightweight web framework on Lambda
+- **AWS Lambda** - Node.js 20.x (ARM64)
 - **Amazon API Gateway** - HTTP API
 - **Amazon DynamoDB** - Single-table design
 - **AWS SAM** - Infrastructure as Code
@@ -60,23 +61,26 @@ fracti/
 │   │   ├── ton.ts                # TON utilities
 │   │   └── utils.ts              # General utilities
 │   └── styles/                   # CSS
-├── server/                       # AWS Lambda Functions
-│   ├── functions/
-│   │   ├── api/                  # REST API handlers
-│   │   │   ├── groups.ts         # Group CRUD
-│   │   │   ├── expenses.ts       # Expense CRUD
-│   │   │   └── settlements.ts    # Settlement & debt calculation
-│   │   ├── ai/                   # AI processing
-│   │   │   ├── parser.ts         # Text to JSON
-│   │   │   └── vision.ts         # Receipt OCR
-│   │   └── webhooks/
-│   │       └── telegram.ts       # Bot webhook
+├── server/                       # AWS Lambda (Hono)
+│   ├── index.ts                  # Hono app entry point
+│   ├── routes/                   # API routes
+│   │   ├── groups.ts             # Group CRUD
+│   │   ├── expenses.ts           # Expense CRUD
+│   │   ├── settlements.ts        # Settlement & debt calculation
+│   │   ├── ai.ts                 # AI parsing endpoints
+│   │   └── webhooks.ts           # Telegram bot webhook
+│   ├── middleware/
+│   │   └── auth.ts               # Telegram auth middleware
 │   └── lib/                      # Shared utilities
 │       ├── bedrock.ts            # AWS Bedrock client
 │       ├── dynamodb.ts           # DynamoDB operations
 │       ├── debt-graph.ts         # Min-cash-flow algorithm
 │       ├── telegram.ts           # Telegram Bot API
 │       └── response.ts           # HTTP response helpers
+├── docs/
+│   └── AWS_SETUP_GUIDE.md        # Complete AWS deployment guide
+├── config/
+│   └── eslint.config.js          # ESLint configuration
 ├── template.yaml                 # AWS SAM template
 ├── samconfig.toml                # SAM deployment config
 └── package.json
@@ -86,7 +90,7 @@ fracti/
 
 ### Prerequisites
 
-- Node.js 20.x
+- Node.js 20+
 - AWS CLI configured
 - AWS SAM CLI
 - Telegram Bot Token (from @BotFather)
@@ -109,25 +113,15 @@ npm run dev
 
 ```bash
 # Build and deploy with SAM
-sam build
-sam deploy --guided
-
-# Set your Telegram Bot Token
-aws ssm put-parameter \
-  --name /fracti/telegram-bot-token \
-  --value "YOUR_BOT_TOKEN" \
-  --type SecureString
+npm run sam:build
+npm run sam:deploy:guided
 ```
 
-### Telegram Bot Setup
-
-1. Create a bot via [@BotFather](https://t.me/BotFather)
-2. Get your bot token
-3. Set the webhook URL:
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=<API_GATEWAY_URL>/api/webhooks/telegram"
-```
-4. Create a Mini App via BotFather with your frontend URL
+See [docs/AWS_SETUP_GUIDE.md](./docs/AWS_SETUP_GUIDE.md) for complete setup instructions including:
+- AWS account creation
+- Bedrock model access
+- Telegram bot configuration
+- Production deployment
 
 ## Database Schema
 
@@ -142,10 +136,14 @@ Single-table design in DynamoDB:
 
 ## API Endpoints
 
+All routes are handled by a single Hono Lambda function.
+
 ### Groups
 - `GET /api/groups` - List user's groups
 - `GET /api/groups/:id` - Get group details
 - `POST /api/groups` - Create new group
+- `POST /api/groups/:id/join` - Join a group
+- `PUT /api/groups/:id/wallet` - Update wallet address
 
 ### Expenses
 - `GET /api/groups/:id/expenses` - List expenses
@@ -153,13 +151,16 @@ Single-table design in DynamoDB:
 - `DELETE /api/groups/:id/expenses/:expenseId` - Delete expense
 
 ### Settlements
-- `GET /api/groups/:id/debts` - Get debt graph
-- `GET /api/groups/:id/settlements` - Get optimized settlements
+- `GET /api/groups/:id/debts` - Get debt graph with balances
+- `GET /api/groups/:id/settlements` - List settlements
 - `POST /api/groups/:id/settlements` - Record settlement
 
 ### AI
 - `POST /api/ai/parse` - Parse expense from text
 - `POST /api/ai/vision` - Extract items from receipt image
+
+### Health
+- `GET /api/health` - API health check
 
 ## AI Agents
 
@@ -210,19 +211,49 @@ TABLE_NAME=fracti-dev
 
 # Optional
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
+NODE_ENV=development
+
+# Frontend
 VITE_API_URL=https://your-api-gateway-url/dev
+VITE_TON_MANIFEST_URL=https://your-domain/tonconnect-manifest.json
 ```
 
 ## Scripts
 
 ```bash
-npm run dev         # Start Vite dev server
-npm run build       # Build frontend for production
-npm run preview     # Preview production build
-npm run typecheck   # TypeScript type checking
-npm run sam:build   # Build SAM application
-npm run sam:deploy  # Deploy to AWS
-npm run sam:local   # Run API locally with SAM
+# Frontend
+npm run dev           # Start Vite dev server
+npm run build         # Build frontend for production
+npm run preview       # Preview production build
+npm run typecheck     # TypeScript type checking
+
+# Backend
+npm run sam:build     # Build SAM application
+npm run sam:deploy    # Deploy to AWS
+npm run sam:deploy:guided  # Guided deployment (first time)
+npm run sam:local     # Run API locally with SAM
+npm run sam:logs      # Tail Lambda logs
+
+# Deployment
+npm run deploy:frontend  # Deploy frontend to S3
+npm run webhook:set      # Set Telegram webhook
+```
+
+## Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐
+│  Telegram Chat  │────▶│  Bot Webhook     │
+└─────────────────┘     └────────┬─────────┘
+                                 │
+┌─────────────────┐     ┌────────▼─────────┐     ┌─────────────────┐
+│  Mini App (UI)  │────▶│  API Gateway     │────▶│  Hono Lambda    │
+└─────────────────┘     └────────┬─────────┘     └────────┬────────┘
+                                 │                        │
+                        ┌────────▼─────────┐     ┌────────▼────────┐
+                        │   AWS Bedrock    │     │    DynamoDB     │
+                        │  (Claude 3.5)    │     │  (Single Table) │
+                        └──────────────────┘     └─────────────────┘
 ```
 
 ## Roadmap
@@ -233,6 +264,7 @@ npm run sam:local   # Run API locally with SAM
 - [ ] USDT Jetton support
 - [ ] Group analytics dashboard
 - [ ] Export to CSV/PDF
+- [ ] Multi-language support
 
 ## License
 
