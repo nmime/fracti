@@ -2,15 +2,36 @@ import type { ZodType } from 'zod'
 import type { MemberRecord } from './dynamodb'
 
 /**
- * Extract JSON from text that may contain other content
- * Useful for parsing AI responses that include JSON in markdown or prose
+ * Extract JSON from text that may contain other content.
+ * Uses balanced brace matching to handle nested objects correctly.
+ * Useful for parsing AI responses that include JSON in markdown or prose.
  */
 export function extractJSON<T>(text: string, schema?: ZodType<T>): T | null {
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) return null
+  // Find the first { and attempt to find its matching }
+  const startIndex = text.indexOf('{')
+  if (startIndex === -1) return null
+
+  let depth = 0
+  let endIndex = -1
+
+  for (let i = startIndex; i < text.length; i++) {
+    const char = text[i]
+    if (char === '{') depth++
+    else if (char === '}') {
+      depth--
+      if (depth === 0) {
+        endIndex = i
+        break
+      }
+    }
+  }
+
+  if (endIndex === -1) return null
+
+  const jsonStr = text.slice(startIndex, endIndex + 1)
 
   try {
-    const parsed = JSON.parse(match[0])
+    const parsed = JSON.parse(jsonStr)
     return schema ? schema.parse(parsed) : parsed
   } catch {
     return null

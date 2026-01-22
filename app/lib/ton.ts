@@ -2,7 +2,7 @@ import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import { useCallback } from 'react'
 
 export const TON_DECIMALS = 9
-export const NANOTON = 1_000_000_000
+export const NANOTON = 10 ** TON_DECIMALS
 
 export function toNano(amount: number): bigint {
   return BigInt(Math.floor(amount * NANOTON))

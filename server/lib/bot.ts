@@ -16,6 +16,8 @@ import {
 import { downloadFile } from './telegram'
 import { createTranslator, getLocaleFromLanguageCode } from './i18n'
 import { config } from './config'
+import { logger } from './logger'
+import { extractJSON } from './utils'
 
 const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
 const MINI_APP_URL = config.MINI_APP_URL
@@ -209,11 +211,17 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 
   try {
     const response = await invokeClaudeText(PARSER_SYSTEM_PROMPT, text)
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return
 
-    const parsed = JSON.parse(jsonMatch[0])
-    if (!parsed.amount || parsed.amount <= 0 || parsed.confidence < 0.5) return
+    // Extract and validate JSON from AI response
+    const parsed = extractJSON<{
+      payer?: string
+      amount?: number
+      description?: string
+      beneficiaries?: string[]
+      confidence?: number
+    }>(response)
+
+    if (!parsed || !parsed.amount || parsed.amount <= 0 || (parsed.confidence ?? 0) < 0.5) return
 
     const members = await getGroupMembers(groupId)
     const memberMap = new Map(members.map((m) => [m.username?.toLowerCase(), m]))
@@ -280,7 +288,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
       }
     )
   } catch (error) {
-    console.error('Expense parse error:', error)
+    logger.error('Expense parse error', { groupId, userId: user.id }, error)
   }
 }
 
@@ -334,13 +342,19 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
       'image/jpeg'
     )
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
+    // Extract and validate JSON from AI response
+    const parsed = extractJSON<{
+      merchant?: string
+      items?: Array<{ name: string; price: number }>
+      total?: number
+      currency?: string
+    }>(response)
+
+    if (!parsed) {
       await ctx.reply(`❌ ${t('bot.receipt.parseError')}`)
       return
     }
 
-    const parsed = JSON.parse(jsonMatch[0])
     if (!parsed.items?.length) {
       await ctx.reply(`❌ ${t('bot.receipt.noItems')}`)
       return
@@ -362,7 +376,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
       reply_markup: keyboard,
     })
   } catch (error) {
-    console.error('Receipt scan error:', error)
+    logger.error('Receipt scan error', { groupId, userId: user.id }, error)
     await ctx.reply(`❌ ${t('bot.receipt.scanError')}`, {
       reply_parameters: { message_id: ctx.message?.message_id || 0 },
     })

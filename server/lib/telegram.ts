@@ -1,6 +1,7 @@
 import { validate, parse } from '@grammyjs/validator'
 import { createHash, createHmac } from 'crypto'
 import { config } from './config'
+import { logger } from './logger'
 
 const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
 
@@ -90,7 +91,7 @@ export function validateInitData(initData: string): TelegramUser | null {
       photo_url: data.user.photo_url,
     }
   } catch (error) {
-    console.error('Init data validation error:', error)
+    logger.error('Init data validation error', {}, error)
     return null
   }
 }
@@ -121,7 +122,7 @@ export function validateWidgetData(data: Record<string, string>): TelegramUser |
       .digest('hex')
 
     if (calculatedHash !== data.hash) {
-      console.warn('Widget hash mismatch')
+      logger.warn('Widget hash mismatch', { userId: data.id })
       return null
     }
 
@@ -129,7 +130,7 @@ export function validateWidgetData(data: Record<string, string>): TelegramUser |
     const authDate = parseInt(data.auth_date, 10)
     const now = Math.floor(Date.now() / 1000)
     if (now - authDate > AUTH_WINDOW_SECONDS) {
-      console.warn('Widget auth_date expired')
+      logger.warn('Widget auth_date expired', { userId: data.id, authDate, now })
       return null
     }
 
@@ -141,7 +142,7 @@ export function validateWidgetData(data: Record<string, string>): TelegramUser |
       photo_url: data.photo_url,
     }
   } catch (error) {
-    console.error('Widget validation error:', error)
+    logger.error('Widget validation error', { userId: data.id }, error)
     return null
   }
 }

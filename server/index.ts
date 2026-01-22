@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { logger } from 'hono/logger'
+import { logger as honoLogger } from 'hono/logger'
 import { timing } from 'hono/timing'
 import { secureHeaders } from 'hono/secure-headers'
 import { requestId } from 'hono/request-id'
@@ -11,6 +11,8 @@ import { ZodError } from 'zod'
 
 import type { Env } from './lib/factory'
 import { isDevelopment, getAllowedOrigins } from './lib/config'
+import { logger } from './lib/logger'
+import { standardRateLimit, aiRateLimit, webhookRateLimit } from './middleware/rateLimit'
 import { groupsRoutes } from './routes/groups'
 import { expensesRoutes } from './routes/expenses'
 import { settlementsRoutes } from './routes/settlements'
@@ -37,12 +39,18 @@ app.use(
     contentSecurityPolicy: isDevelopment ? false : {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", 'https://telegram.org'],
+      // Use nonce for styles in production - for now allow inline with strict CSP
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
       connectSrc: ["'self'", 'https://api.telegram.org', 'https://tonapi.io'],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'self'", 'https://web.telegram.org'],
     },
     xContentTypeOptions: 'nosniff',
-    xFrameOptions: 'DENY',
+    xFrameOptions: 'SAMEORIGIN', // Allow Telegram iframe
     referrerPolicy: 'strict-origin-when-cross-origin',
   })
 )
@@ -50,8 +58,8 @@ app.use(
 // Compression for responses
 app.use('*', compress())
 
-// Logger
-app.use('*', logger())
+// Logger (Hono request logger)
+app.use('*', honoLogger())
 
 // CORS - restricted in production
 app.use(
@@ -92,19 +100,22 @@ app.get('/api/health', (c) => {
 // Mount Routes
 // ============================================
 
-// Groups API
+// Groups API - standard rate limit
+app.use('/api/groups/*', standardRateLimit)
 app.route('/api/groups', groupsRoutes)
 
-// Expenses API (nested under groups)
+// Expenses API (nested under groups) - already covered by /api/groups/*
 app.route('/api/groups', expensesRoutes)
 
-// Settlements API (nested under groups)
+// Settlements API (nested under groups) - already covered by /api/groups/*
 app.route('/api/groups', settlementsRoutes)
 
-// AI API
+// AI API - stricter rate limit (expensive operations)
+app.use('/api/ai/*', aiRateLimit)
 app.route('/api/ai', aiRoutes)
 
-// Webhooks (Telegram bot)
+// Webhooks (Telegram bot) - higher rate limit
+app.use('/api/webhooks/*', webhookRateLimit)
 app.route('/api/webhooks', webhooksRoutes)
 
 // ============================================
@@ -159,13 +170,11 @@ app.onError((err, c) => {
   }
 
   // Log unexpected errors
-  console.error('Unhandled error:', {
+  logger.error('Unhandled error', {
     requestId: reqId,
-    error: err.message,
-    stack: err.stack,
     path: c.req.path,
     method: c.req.method,
-  })
+  }, err)
 
   // Return generic error in production
   return c.json(

@@ -5,6 +5,7 @@ import { useTelegram } from '@/lib/telegram'
 import { useTonPayment } from '@/lib/ton'
 import { type Settlement } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 import { createDemoSettlements, demoWalletAddresses } from '@/lib/fixtures'
 import { SettlementCard } from '@/components/SettlementCard'
 import { WalletButton } from '@/components/WalletButton'
@@ -85,7 +86,7 @@ export default function SettlePage() {
 
       // In production: await api.recordSettlement('demo', { ... })
     } catch (error) {
-      console.error('Payment failed:', error)
+      logger.error('Payment failed', { settlementId: settlement.id }, error)
       hapticFeedback.notificationOccurred('error')
       toast({
         title: t('toast.paymentError.title'),

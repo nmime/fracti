@@ -2,7 +2,9 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime'
+import { z } from 'zod'
 import { config } from './config'
+import { logger } from './logger'
 
 const client = new BedrockRuntimeClient({
   region: config.AWS_REGION,
@@ -10,26 +12,18 @@ const client = new BedrockRuntimeClient({
 
 const MODEL_ID = config.BEDROCK_MODEL_ID
 
-interface ClaudeMessage {
-  role: 'user' | 'assistant'
-  content: string | ClaudeContentBlock[]
-}
-
-interface ClaudeContentBlock {
-  type: 'text' | 'image'
-  text?: string
-  source?: {
-    type: 'base64'
-    media_type: string
-    data: string
-  }
-}
-
-interface ClaudeResponse {
-  content: Array<{ type: string; text: string }>
-  stop_reason: string
-  usage: { input_tokens: number; output_tokens: number }
-}
+// Zod schema for Claude API response validation
+const claudeResponseSchema = z.object({
+  content: z.array(z.object({
+    type: z.string(),
+    text: z.string(),
+  })).min(1, 'Response must contain at least one content block'),
+  stop_reason: z.string(),
+  usage: z.object({
+    input_tokens: z.number(),
+    output_tokens: z.number(),
+  }),
+})
 
 export async function invokeClaudeText(
   systemPrompt: string,
@@ -55,11 +49,24 @@ export async function invokeClaudeText(
   })
 
   const response = await client.send(command)
-  const responseBody = JSON.parse(
-    new TextDecoder().decode(response.body)
-  ) as ClaudeResponse
 
-  return responseBody.content[0].text
+  // Parse and validate response with Zod
+  let responseBody: z.infer<typeof claudeResponseSchema>
+  try {
+    const rawBody = JSON.parse(new TextDecoder().decode(response.body))
+    responseBody = claudeResponseSchema.parse(rawBody)
+  } catch (error) {
+    logger.error('Invalid Bedrock response format', {}, error)
+    throw new Error('Invalid response from AI model')
+  }
+
+  // Safe array access (validated by Zod min(1))
+  const textContent = responseBody.content[0]
+  if (!textContent?.text) {
+    throw new Error('AI model returned empty response')
+  }
+
+  return textContent.text
 }
 
 export async function invokeClaudeVision(
@@ -100,11 +107,24 @@ export async function invokeClaudeVision(
   })
 
   const response = await client.send(command)
-  const responseBody = JSON.parse(
-    new TextDecoder().decode(response.body)
-  ) as ClaudeResponse
 
-  return responseBody.content[0].text
+  // Parse and validate response with Zod
+  let responseBody: z.infer<typeof claudeResponseSchema>
+  try {
+    const rawBody = JSON.parse(new TextDecoder().decode(response.body))
+    responseBody = claudeResponseSchema.parse(rawBody)
+  } catch (error) {
+    logger.error('Invalid Bedrock vision response format', {}, error)
+    throw new Error('Invalid response from AI model')
+  }
+
+  // Safe array access (validated by Zod min(1))
+  const textContent = responseBody.content[0]
+  if (!textContent?.text) {
+    throw new Error('AI model returned empty response')
+  }
+
+  return textContent.text
 }
 
 // System prompts for different AI agents

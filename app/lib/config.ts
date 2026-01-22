@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { logger } from './logger'
 
 /**
  * Frontend configuration schema with Zod validation.
@@ -52,11 +53,10 @@ function parseEnv(): Env {
 
   if (!result.success) {
     const errors = result.error.issues.map((issue) => {
-      return `  - ${issue.path.join('.')}: ${issue.message}`
+      return `${issue.path.join('.')}: ${issue.message}`
     })
 
-    console.warn('⚠️ Invalid environment variables:')
-    console.warn(errors.join('\n'))
+    logger.warn('Invalid environment variables', { errors })
 
     // Return defaults for frontend (don't crash)
     return envSchema.parse({})

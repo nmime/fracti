@@ -35,7 +35,18 @@ export default function ScanPage() {
     // Convert to base64
     const reader = new FileReader()
     reader.onload = async () => {
-      const base64 = (reader.result as string).split(',')[1]
+      const dataUrl = reader.result as string
+      const parts = dataUrl.split(',')
+      // Ensure we have at least 2 parts (data URL format: "data:mime;base64,<data>")
+      const base64 = parts.length > 1 ? parts[1] : null
+      if (!base64) {
+        toast({
+          title: t('toast.scanError.title'),
+          description: t('toast.scanError.description'),
+          variant: 'destructive',
+        })
+        return
+      }
       await processReceipt(base64)
     }
     reader.readAsDataURL(file)

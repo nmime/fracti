@@ -11,6 +11,8 @@ import {
 } from '../lib/bedrock'
 import { authMiddleware, requireAuth } from '../middleware/auth'
 import { parseTextSchema, parseVisionSchema } from '../lib/schemas'
+import { logger } from '../lib/logger'
+import { extractJSON } from '../lib/utils'
 
 export const aiRoutes = new Hono<Env>()
 
@@ -34,17 +36,23 @@ aiRoutes.post(
 
       const response = await invokeClaudeText(PARSER_SYSTEM_PROMPT, prompt)
 
-      // Extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
+      // Extract and parse JSON from response
+      const parsed = extractJSON<{
+        payer?: string | null
+        amount?: number
+        currency?: string
+        description?: string
+        beneficiaries?: string[]
+        split_type?: string
+        confidence?: number
+      }>(response)
+
+      if (!parsed) {
         return c.json({
           success: false,
           error: 'Could not parse expense from text',
-          raw: response,
         })
       }
-
-      const parsed = JSON.parse(jsonMatch[0])
 
       return c.json({
         success: true,
@@ -59,13 +67,11 @@ aiRoutes.post(
             confidence: parsed.confidence || 0,
           },
         },
-        raw: response,
       })
     } catch (error) {
-      console.error('AI parse error:', error)
+      logger.error('AI parse error', { text: text.slice(0, 100) }, error)
       throw new HTTPException(500, {
         message: 'Failed to parse expense text',
-        cause: error,
       })
     }
   }
@@ -86,17 +92,24 @@ aiRoutes.post(
         mimeType || 'image/jpeg'
       )
 
-      // Extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
+      // Extract and parse JSON from response
+      const parsed = extractJSON<{
+        merchant?: string | null
+        date?: string | null
+        items?: Array<{ name: string; quantity: number; price: number }>
+        subtotal?: number
+        tax?: number
+        total?: number
+        currency?: string
+        confidence?: number
+      }>(response)
+
+      if (!parsed) {
         return c.json({
           success: false,
           error: 'Could not parse receipt from image',
-          raw: response,
         })
       }
-
-      const parsed = JSON.parse(jsonMatch[0])
 
       return c.json({
         success: true,
@@ -112,13 +125,11 @@ aiRoutes.post(
             confidence: parsed.confidence || 0,
           },
         },
-        raw: response,
       })
     } catch (error) {
-      console.error('AI vision error:', error)
+      logger.error('AI vision error', { mimeType }, error)
       throw new HTTPException(500, {
         message: 'Failed to parse receipt image',
-        cause: error,
       })
     }
   }

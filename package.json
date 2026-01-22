@@ -10,6 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "sam:build": "sam build",
     "sam:deploy": "sam deploy",
     "sam:deploy:guided": "sam deploy --guided",
@@ -58,6 +61,8 @@
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^14.2.0",
     "@types/aws-lambda": "^8.10.131",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",
@@ -65,14 +70,17 @@
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.3.0",
     "autoprefixer": "^10.4.17",
     "esbuild": "^0.20.0",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "jsdom": "^24.0.0",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "vitest": "^1.3.0"
   },
   "engines": {
     "node": ">=20.0.0"

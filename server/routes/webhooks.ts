@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { handleUpdate } from '../lib/bot'
+import { logger } from '../lib/logger'
 
 export const webhooksRoutes = new Hono()
 
@@ -16,8 +17,8 @@ webhooksRoutes.post('/telegram', async (c) => {
       headers: response.headers,
     })
   } catch (error) {
-    console.error('Telegram webhook error:', error)
+    logger.error('Telegram webhook error', {}, error)
     // Always return 200 to prevent Telegram retries
-    return c.json({ ok: false, error: String(error) })
+    return c.json({ ok: false })
   }
 })

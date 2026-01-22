@@ -62,11 +62,10 @@ function parseEnv(): Env {
       return `  - ${issue.path.join('.')}: ${issue.message}`
     })
 
-    console.error('❌ Invalid environment variables:')
-    console.error(errors.join('\n'))
-    console.error('\nPlease check your .env file or environment configuration.')
-
-    throw new Error(`Environment validation failed:\n${errors.join('\n')}`)
+    // Throw with detailed message - logging handled by caller
+    throw new Error(
+      `Environment validation failed:\n${errors.join('\n')}\n\nPlease check your .env file or environment configuration.`
+    )
   }
 
   return result.data
@@ -88,11 +87,16 @@ export const isLocalDev = config.AWS_SAM_LOCAL || isDevelopment
 
 /**
  * Get allowed origins for CORS
- * In development, allow all origins
+ * In development, restrict to localhost variants
  */
-export function getAllowedOrigins(): string[] | '*' {
+export function getAllowedOrigins(): string[] {
   if (isLocalDev) {
-    return '*'
+    return [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
+    ]
   }
   return config.ALLOWED_ORIGINS
 }

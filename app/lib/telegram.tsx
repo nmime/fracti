@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import WebApp from '@twa-dev/sdk'
 import { demoUser } from '@/lib/fixtures'
+import { logger } from '@/lib/logger'
 
 interface TelegramUser {
   id: number
@@ -117,7 +118,7 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
 
       setIsReady(true)
     } catch (error) {
-      console.error('Telegram WebApp initialization error:', error)
+      logger.error('Telegram WebApp initialization error', {}, error)
       setIsReady(true)
     }
   }, [isTelegram])

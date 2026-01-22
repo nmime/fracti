@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
 import { type DebtGraph as DebtGraphType, type Group } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 import { demoDebtGraph, demoGroup, demoRecentActivity } from '@/lib/fixtures'
 import { DebtGraph } from '@/components/DebtGraph'
 import { WalletButton } from '@/components/WalletButton'
@@ -32,13 +33,13 @@ export default function HomePage() {
         // const data = await api.getDebts(group.id)
         // setDebtGraph(data)
       } catch (error) {
-        console.error('Failed to load debt graph:', error)
+        logger.error('Failed to load debt graph', { groupId: group.id }, error)
       } finally {
         setIsLoading(false)
       }
     }
     loadData()
-  }, [])
+  }, [group.id])
 
   const formatTimeAgo = (hours: number) => {
     if (hours < 1) return t('home.justNow')
@@ -105,7 +106,7 @@ export default function HomePage() {
           ) : (
             <DebtGraph
               data={debtGraph}
-              onNodeClick={(node) => console.log('Clicked:', node)}
+              onNodeClick={(node) => logger.debug('Node clicked', { nodeId: node.id })}
             />
           )}
         </CardContent>
