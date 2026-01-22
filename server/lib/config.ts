@@ -51,6 +51,22 @@ const envSchema = z.object({
     .string()
     .default('https://t.me,https://web.telegram.org')
     .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean)),
+
+  // TON Center API for transaction verification
+  TONCENTER_API_KEY: z
+    .string()
+    .optional(),
+
+  TONCENTER_API_URL: z
+    .string()
+    .url()
+    .default('https://toncenter.com/api/v3'),
+
+  // Whether to skip TON verification (for testing)
+  SKIP_TON_VERIFICATION: z
+    .string()
+    .transform((v) => v === 'true')
+    .default('false'),
 })
 
 export type Env = z.infer<typeof envSchema>

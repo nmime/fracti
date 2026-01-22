@@ -17,6 +17,8 @@ import {
 import { calculateBalances, optimizeSettlements, buildDebtGraph } from '../lib/debt-graph'
 import { authMiddleware, requireAuth, getCurrentUser } from '../middleware/auth'
 import { createMemberMap } from '../lib/utils'
+import { verifyTonTransaction } from '../lib/ton'
+import { logger } from '../lib/logger'
 import {
   groupIdParamSchema,
   settlementIdParamSchema,
@@ -106,9 +108,11 @@ settlementsRoutes.get(
         toUserId: s.toUserId,
         toUserName: s.toUserName,
         amount: s.amount,
+        currency: s.currency,
         txHash: s.txHash,
         status: s.status,
         createdAt: s.createdAt,
+        completedAt: s.completedAt,
       })),
       pagination: {
         hasMore: result.hasMore,
@@ -151,6 +155,49 @@ settlementsRoutes.post(
     const id = randomUUID()
     const now = new Date().toISOString()
 
+    // If txHash is provided, verify the transaction on-chain
+    let status: 'pending' | 'completed' | 'failed' = 'pending'
+    let completedAt: string | undefined
+
+    if (txHash) {
+      // Verify recipient has a wallet address
+      if (!toMember.wallet) {
+        throw new HTTPException(400, {
+          message: 'Recipient has no wallet address registered. Cannot verify transaction.',
+        })
+      }
+
+      // Verify the transaction on TON blockchain
+      const verification = await verifyTonTransaction(
+        txHash,
+        toMember.wallet,
+        amount,
+        `Fracti Settlement #${id}`
+      )
+
+      if (!verification.verified) {
+        logger.warn('TON transaction verification failed', {
+          txHash,
+          settlementId: id,
+          error: verification.error,
+        })
+        throw new HTTPException(400, {
+          message: verification.error || 'Transaction verification failed',
+        })
+      }
+
+      status = 'completed'
+      completedAt = now
+
+      logger.info('Settlement created with verified transaction', {
+        settlementId: id,
+        txHash,
+        from: fromUserId,
+        to: toId,
+        amount,
+      })
+    }
+
     const settlement = await createSettlement({
       id,
       groupId,
@@ -161,9 +208,9 @@ settlementsRoutes.post(
       amount,
       currency: group.currency,
       txHash: txHash || undefined,
-      status: txHash ? 'completed' : 'pending',
+      status,
       createdAt: now,
-      completedAt: txHash ? now : undefined,
+      completedAt,
     })
 
     return c.json({ success: true, data: settlement }, 201)
@@ -203,6 +250,45 @@ settlementsRoutes.put(
       throw new HTTPException(400, { message: 'Cannot update a non-pending settlement' })
     }
 
+    // If txHash is provided, verify the transaction on-chain
+    if (txHash) {
+      // Get recipient's wallet address
+      const members = await getGroupMembers(groupId)
+      const memberMap = createMemberMap(members)
+      const toMember = memberMap.get(settlement.toUserId)
+
+      if (!toMember?.wallet) {
+        throw new HTTPException(400, {
+          message: 'Recipient has no wallet address registered. Cannot verify transaction.',
+        })
+      }
+
+      // Verify the transaction on TON blockchain
+      const verification = await verifyTonTransaction(
+        txHash,
+        toMember.wallet,
+        settlement.amount,
+        `Fracti Settlement #${settlementId}`
+      )
+
+      if (!verification.verified) {
+        logger.warn('TON transaction verification failed on update', {
+          txHash,
+          settlementId,
+          error: verification.error,
+        })
+        throw new HTTPException(400, {
+          message: verification.error || 'Transaction verification failed. Please check the transaction hash.',
+        })
+      }
+
+      logger.info('Settlement transaction verified successfully', {
+        settlementId,
+        txHash,
+        verification: verification.details,
+      })
+    }
+
     // Update the settlement in DynamoDB
     const newStatus = status ?? (txHash ? 'completed' : settlement.status)
     await updateSettlementStatus(groupId, settlement.createdAt, newStatus, txHash)
@@ -213,6 +299,7 @@ settlementsRoutes.put(
         ...settlement,
         txHash: txHash ?? settlement.txHash,
         status: newStatus,
+        completedAt: newStatus === 'completed' ? new Date().toISOString() : settlement.completedAt,
       },
     })
   }
