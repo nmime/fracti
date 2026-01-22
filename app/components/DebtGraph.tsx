@@ -38,7 +38,7 @@ interface DebtGraphProps {
 }
 
 export function DebtGraph({ data, onNodeClick, width = 350, height = 300 }: DebtGraphProps) {
-  const graphRef = useRef<ForceGraphMethods<NodeObject<GraphNode>, LinkObject<GraphNode, GraphLink>>>()
+  const graphRef = useRef<ForceGraphMethods<NodeObject<GraphNode>, LinkObject<GraphNode, GraphLink>>>(undefined)
   const [dimensions, setDimensions] = useState({ width, height })
 
   // Memoize graph data to prevent unnecessary re-renders of the force graph

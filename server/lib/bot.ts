@@ -160,33 +160,44 @@ bot.command('add', async (ctx) => {
   )
 })
 
-// Handle text messages (expense parsing)
+// Handle ALL text messages - register users and parse expenses when mentioned
 bot.on('message:text', async (ctx) => {
   // Skip commands and private chats
   if (ctx.message.text.startsWith('/')) return
   if (ctx.chat.type === 'private') return
 
+  const chatId = ctx.chat?.id
+  const user = ctx.from
+  if (!chatId || !user) return
+
+  const groupId = String(chatId)
+
+  // Always ensure group exists and register user (capture ALL users)
+  let group = await getGroup(groupId)
+  if (!group) {
+    group = await createGroup({
+      id: groupId,
+      chatId: groupId,
+      title: getChatTitle(ctx.chat),
+      createdAt: new Date().toISOString(),
+      memberCount: 1,
+    })
+  }
+
+  // Register user from every message
+  await upsertUser(groupId, {
+    id: String(user.id),
+    telegramId: user.id,
+    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
+    username: user.username,
+  })
+
+  // Only process expense via AI when bot is @mentioned
+  const botUsername = ctx.me.username.toLowerCase()
   const text = ctx.message.text.toLowerCase()
+  const isBotMentioned = text.includes(`@${botUsername}`)
 
-  // Check if message looks like an expense (multilingual patterns)
-  const isExpenseMessage =
-    text.includes('@fracti') ||
-    // English patterns
-    text.includes('paid') ||
-    text.includes('spent') ||
-    text.includes('bought') ||
-    text.includes('split') ||
-    // Russian patterns
-    text.includes('заплатил') ||
-    text.includes('заплатила') ||
-    text.includes('потратил') ||
-    text.includes('потратила') ||
-    text.includes('купил') ||
-    text.includes('купила') ||
-    text.includes('раздели') ||
-    /\d+\s*(ton|usd|eur|rub|руб|\$|€|₽)/i.test(ctx.message.text)
-
-  if (!isExpenseMessage) return
+  if (!isBotMentioned) return
 
   await handleExpenseMessage(ctx)
 })
@@ -194,6 +205,32 @@ bot.on('message:text', async (ctx) => {
 // Handle photo messages (receipt scanning)
 bot.on('message:photo', async (ctx) => {
   if (ctx.chat.type === 'private') return
+
+  const chatId = ctx.chat?.id
+  const user = ctx.from
+  if (!chatId || !user) return
+
+  const groupId = String(chatId)
+
+  // Always ensure group exists and register user (capture ALL users)
+  let group = await getGroup(groupId)
+  if (!group) {
+    group = await createGroup({
+      id: groupId,
+      chatId: groupId,
+      title: getChatTitle(ctx.chat),
+      createdAt: new Date().toISOString(),
+      memberCount: 1,
+    })
+  }
+
+  // Register user from every message
+  await upsertUser(groupId, {
+    id: String(user.id),
+    telegramId: user.id,
+    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
+    username: user.username,
+  })
 
   await handlePhotoMessage(ctx)
 })
@@ -208,25 +245,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 
   const groupId = String(chatId)
 
-  // Ensure group exists
-  let group = await getGroup(groupId)
-  if (!group) {
-    group = await createGroup({
-      id: groupId,
-      chatId: groupId,
-      title: getChatTitle(ctx.chat),
-      createdAt: new Date().toISOString(),
-      memberCount: 1,
-    })
-  }
-
-  // Register user
-  await upsertUser(groupId, {
-    id: String(user.id),
-    telegramId: user.id,
-    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
-    username: user.username,
-  })
+  // Group and user are already registered in the main message handler
 
   try {
     const response = await invokeClaudeText(PARSER_SYSTEM_PROMPT, text)
@@ -326,25 +345,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
   const groupId = String(chatId)
   const photo = photos[photos.length - 1] // Get largest photo
 
-  // Ensure group exists
-  let group = await getGroup(groupId)
-  if (!group) {
-    group = await createGroup({
-      id: groupId,
-      chatId: groupId,
-      title: getChatTitle(ctx.chat),
-      createdAt: new Date().toISOString(),
-      memberCount: 1,
-    })
-  }
-
-  // Register user
-  await upsertUser(groupId, {
-    id: String(user.id),
-    telegramId: user.id,
-    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
-    username: user.username,
-  })
+  // Group and user are already registered in the main photo handler
 
   try {
     const imageBuffer = await downloadFile(photo.file_id)
