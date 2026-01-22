@@ -40,17 +40,17 @@ function formatMessage(level: LogLevel, message: string, context?: LogContext): 
  * Send error to monitoring service in production
  * This is a placeholder - integrate with Sentry, LogRocket, etc.
  */
-function reportToMonitoring(level: LogLevel, message: string, context?: LogContext, error?: unknown): void {
+function reportToMonitoring(_level: LogLevel, _message: string, _context?: LogContext, _error?: unknown): void {
   if (!isProduction) return
 
   // In production, you would send to your monitoring service:
-  // Sentry.captureException(error, { extra: { message, ...context } })
-  // or LogRocket.captureException(error)
+  // Sentry.captureException(_error, { extra: { _message, ..._context } })
+  // or LogRocket.captureException(_error)
 
   // For now, we silently ignore in production
   // Uncomment below to still log errors in production:
-  // if (level === 'error' && error) {
-  //   console.error(formatMessage(level, message, context), error)
+  // if (_level === 'error' && _error) {
+  //   console.error(formatMessage(_level, _message, _context), _error)
   // }
 }
 

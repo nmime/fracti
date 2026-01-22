@@ -11,7 +11,14 @@ interface RateLimitConfig {
 interface RateLimitStore {
   count: number
   resetTime: number
+  lastAccess: number
 }
+
+/**
+ * Maximum number of entries in the rate limit store.
+ * Prevents unbounded memory growth in Lambda.
+ */
+const MAX_STORE_SIZE = 10000
 
 /**
  * Simple in-memory rate limiter for AWS Lambda.
@@ -19,6 +26,39 @@ interface RateLimitStore {
  * For distributed rate limiting, use DynamoDB or Redis.
  */
 const store = new Map<string, RateLimitStore>()
+
+/**
+ * Evict oldest entries when store exceeds max size.
+ * Uses LRU-like eviction based on lastAccess time.
+ */
+function evictOldEntries(): void {
+  if (store.size <= MAX_STORE_SIZE) return
+
+  const now = Date.now()
+  const entriesToDelete: string[] = []
+
+  // First pass: remove expired entries
+  for (const [key, value] of store.entries()) {
+    if (value.resetTime < now) {
+      entriesToDelete.push(key)
+    }
+  }
+
+  for (const key of entriesToDelete) {
+    store.delete(key)
+  }
+
+  // If still over limit, remove oldest entries
+  if (store.size > MAX_STORE_SIZE) {
+    const entries = Array.from(store.entries())
+      .sort((a, b) => a[1].lastAccess - b[1].lastAccess)
+
+    const toRemove = store.size - MAX_STORE_SIZE
+    for (let i = 0; i < toRemove; i++) {
+      store.delete(entries[i][0])
+    }
+  }
+}
 
 // Clean up old entries periodically
 const cleanupInterval = setInterval(() => {
@@ -54,13 +94,17 @@ export function rateLimit(config: RateLimitConfig) {
 
     // If no record or window expired, start fresh
     if (!record || record.resetTime < now) {
+      // Evict old entries before adding new one
+      evictOldEntries()
       record = {
         count: 1,
         resetTime: now + windowMs,
+        lastAccess: now,
       }
       store.set(key, record)
     } else {
       record.count++
+      record.lastAccess = now
     }
 
     // Set rate limit headers

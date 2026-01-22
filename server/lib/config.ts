@@ -5,10 +5,10 @@ import { z } from 'zod'
  * All environment variables are validated at startup.
  */
 const envSchema = z.object({
-  // Node environment
+  // Node environment - defaults to 'production' for security (secure by default)
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
-    .default('development'),
+    .default('production'),
 
   // AWS SAM local development flag
   AWS_SAM_LOCAL: z

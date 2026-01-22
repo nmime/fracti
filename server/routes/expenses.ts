@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 import type { Env } from '../lib/factory'
 import {
   getExpenses,
+  getAllExpenses,
   createExpense,
   deleteExpense,
   getGroup,
@@ -16,6 +17,9 @@ import {
   groupIdParamSchema,
   expenseIdParamSchema,
   createExpenseSchema,
+  paginationQuerySchema,
+  decodeCursor,
+  encodeCursor,
 } from '../lib/schemas'
 
 export const expensesRoutes = new Hono<Env>()
@@ -23,23 +27,28 @@ export const expensesRoutes = new Hono<Env>()
 // Apply auth middleware to all routes
 expensesRoutes.use('*', authMiddleware)
 
-// GET /api/groups/:groupId/expenses - List expenses for a group
+// GET /api/groups/:groupId/expenses - List expenses for a group (paginated)
 expensesRoutes.get(
   '/:groupId/expenses',
   zValidator('param', groupIdParamSchema),
+  zValidator('query', paginationQuerySchema),
   async (c) => {
     const { groupId } = c.req.valid('param')
+    const { limit, cursor } = c.req.valid('query')
 
     const group = await getGroup(groupId)
     if (!group) {
       throw new HTTPException(404, { message: 'Group not found' })
     }
 
-    const expenses = await getExpenses(groupId)
+    const result = await getExpenses(groupId, {
+      limit,
+      lastKey: decodeCursor(cursor),
+    })
 
     return c.json({
       success: true,
-      data: expenses.map((e) => ({
+      data: result.items.map((e) => ({
         id: e.id,
         groupId: e.groupId,
         payerId: e.payerId,
@@ -50,6 +59,10 @@ expensesRoutes.get(
         splits: e.splits,
         createdAt: e.createdAt,
       })),
+      pagination: {
+        hasMore: result.hasMore,
+        nextCursor: encodeCursor(result.lastKey),
+      },
     })
   }
 )
@@ -116,7 +129,9 @@ expensesRoutes.get(
       throw new HTTPException(404, { message: 'Group not found' })
     }
 
-    const expenses = await getExpenses(groupId)
+    // Note: For single expense lookup, we need to scan all expenses
+    // Consider adding a GSI on expense ID for more efficient lookups
+    const expenses = await getAllExpenses(groupId)
     const expense = expenses.find((e) => e.id === expenseId)
 
     if (!expense) {
@@ -141,7 +156,9 @@ expensesRoutes.delete(
       throw new HTTPException(404, { message: 'Group not found' })
     }
 
-    const expenses = await getExpenses(groupId)
+    // Note: For single expense lookup, we need to scan all expenses
+    // Consider adding a GSI on expense ID for more efficient lookups
+    const expenses = await getAllExpenses(groupId)
     const expense = expenses.find((e) => e.id === expenseId)
 
     if (!expense) {

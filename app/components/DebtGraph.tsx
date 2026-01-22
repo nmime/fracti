@@ -1,19 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d'
+import ForceGraph2D, { ForceGraphMethods } from 'react-force-graph-2d'
 import type { DebtGraph as DebtGraphType } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 
-interface GraphNode extends NodeObject {
+interface GraphNode {
   id: string
   name: string
   balance: number
   wallet?: string
+  // Force graph adds these at runtime
+  x?: number
+  y?: number
+  vx?: number
+  vy?: number
+  fx?: number
+  fy?: number
 }
 
-interface GraphLink extends LinkObject {
-  source: string
-  target: string
+interface GraphLink {
+  source: string | GraphNode
+  target: string | GraphNode
   amount: number
+}
+
+// Helper to get node from link source/target (can be string or object after simulation)
+function getNodeCoords(nodeOrId: string | GraphNode): { x: number; y: number } | null {
+  if (typeof nodeOrId === 'string') return null
+  if (nodeOrId.x === undefined || nodeOrId.y === undefined) return null
+  return { x: nodeOrId.x, y: nodeOrId.y }
 }
 
 interface DebtGraphProps {
@@ -24,7 +38,8 @@ interface DebtGraphProps {
 }
 
 export function DebtGraph({ data, onNodeClick, width = 350, height = 300 }: DebtGraphProps) {
-  const graphRef = useRef<ForceGraphMethods>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const graphRef = useRef<ForceGraphMethods<any, any>>()
   const [dimensions, setDimensions] = useState({ width, height })
 
   const graphData = {
@@ -95,10 +110,10 @@ export function DebtGraph({ data, onNodeClick, width = 350, height = 300 }: Debt
 
   const linkCanvasObject = useCallback(
     (link: GraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const start = link.source as GraphNode
-      const end = link.target as GraphNode
+      const start = getNodeCoords(link.source)
+      const end = getNodeCoords(link.target)
 
-      if (!start.x || !start.y || !end.x || !end.y) return
+      if (!start || !end) return
 
       // Draw link line
       ctx.beginPath()
@@ -140,8 +155,8 @@ export function DebtGraph({ data, onNodeClick, width = 350, height = 300 }: Debt
   )
 
   const handleNodeClick = useCallback(
-    (node: NodeObject) => {
-      onNodeClick?.(node as GraphNode)
+    (node: GraphNode) => {
+      onNodeClick?.(node)
     },
     [onNodeClick]
   )
@@ -157,7 +172,7 @@ export function DebtGraph({ data, onNodeClick, width = 350, height = 300 }: Debt
   return (
     <div className="force-graph-container rounded-lg border bg-card">
       <ForceGraph2D
-        ref={graphRef as React.MutableRefObject<ForceGraphMethods | undefined>}
+        ref={graphRef}
         graphData={graphData}
         width={dimensions.width}
         height={dimensions.height}

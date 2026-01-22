@@ -18,11 +18,12 @@ export default function SettlePage() {
   const { t } = useTranslation()
   const { user, hapticFeedback } = useTelegram()
   const { toast } = useToast()
-  const { isConnected, sendTransaction, address } = useTonPayment()
+  const { isConnected, sendTransaction } = useTonPayment()
   const [settlements, setSettlements] = useState<Settlement[]>(() => createDemoSettlements())
   const [payingId, setPayingId] = useState<string | null>(null)
 
-  const currentUserId = '1'
+  // Use Telegram user ID when available, fallback to demo user '1' for development
+  const currentUserId = user?.id ? String(user.id) : '1'
 
   const pendingSettlements = settlements.filter((s) => s.status === 'pending')
   const completedSettlements = settlements.filter((s) => s.status === 'completed')

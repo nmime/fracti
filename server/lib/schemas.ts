@@ -56,6 +56,35 @@ export const groupIdParamSchema = z.object({
   groupId: z.string().min(1, 'Group ID is required'),
 })
 
+// ============================================
+// Pagination Schemas
+// ============================================
+
+export const paginationQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().optional(),
+})
+
+/**
+ * Decode a base64 cursor to DynamoDB LastEvaluatedKey
+ */
+export function decodeCursor(cursor: string | undefined): Record<string, unknown> | undefined {
+  if (!cursor) return undefined
+  try {
+    return JSON.parse(Buffer.from(cursor, 'base64url').toString('utf-8'))
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Encode DynamoDB LastEvaluatedKey to a base64 cursor
+ */
+export function encodeCursor(lastKey: Record<string, unknown> | undefined): string | undefined {
+  if (!lastKey) return undefined
+  return Buffer.from(JSON.stringify(lastKey)).toString('base64url')
+}
+
 export const expenseIdParamSchema = z.object({
   groupId: z.string().min(1, 'Group ID is required'),
   expenseId: z.string().uuid('Invalid expense ID'),

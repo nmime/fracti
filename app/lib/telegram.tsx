@@ -3,6 +3,15 @@ import WebApp from '@twa-dev/sdk'
 import { demoUser } from '@/lib/fixtures'
 import { logger } from '@/lib/logger'
 
+// Extend Window interface for Telegram WebApp
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: typeof WebApp
+    }
+  }
+}
+
 interface TelegramUser {
   id: number
   first_name: string

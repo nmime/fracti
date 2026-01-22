@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
@@ -17,7 +17,7 @@ export default function HomePage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
   const navigate = useNavigate()
-  const [debtGraph, setDebtGraph] = useState<DebtGraphType>(demoDebtGraph)
+  const [debtGraph] = useState<DebtGraphType>(demoDebtGraph) // TODO: Use setDebtGraph when fetching from API
   const [group] = useState<Group>(demoGroup)
   const [isLoading, setIsLoading] = useState(false)
 

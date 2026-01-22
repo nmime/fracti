@@ -1,4 +1,4 @@
-import { validate, parse } from '@grammyjs/validator'
+import { validateWebAppData } from '@grammyjs/validator'
 import { createHash, createHmac } from 'crypto'
 import { config } from './config'
 import { logger } from './logger'
@@ -7,6 +7,13 @@ const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
 
 // Auth window in seconds (5 minutes for security)
 const AUTH_WINDOW_SECONDS = 300
+
+/**
+ * Parse URLSearchParams from init data string
+ */
+function parseInitData(initData: string): URLSearchParams {
+  return new URLSearchParams(initData)
+}
 
 export interface TelegramUser {
   id: number
@@ -72,23 +79,28 @@ export function validateInitData(initData: string): TelegramUser | null {
   if (!BOT_TOKEN || !initData) return null
 
   try {
-    // Validate the init data
-    const isValid = validate(initData, BOT_TOKEN)
+    // Parse init data into URLSearchParams
+    const params = parseInitData(initData)
+
+    // Validate the init data using grammyjs validator
+    const isValid = validateWebAppData(BOT_TOKEN, params)
     if (!isValid) return null
 
-    // Parse the validated data
-    const data = parse(initData)
+    // Extract user from validated data
+    const userJson = params.get('user')
+    if (!userJson) return null
 
-    if (!data.user) return null
+    const user = JSON.parse(userJson)
+    if (!user || typeof user.id !== 'number') return null
 
     return {
-      id: data.user.id,
-      first_name: data.user.first_name,
-      last_name: data.user.last_name,
-      username: data.user.username,
-      language_code: data.user.language_code,
-      is_premium: data.user.is_premium,
-      photo_url: data.user.photo_url,
+      id: user.id,
+      first_name: user.first_name || '',
+      last_name: user.last_name,
+      username: user.username,
+      language_code: user.language_code,
+      is_premium: user.is_premium,
+      photo_url: user.photo_url,
     }
   } catch (error) {
     logger.error('Init data validation error', {}, error)

@@ -1,4 +1,5 @@
 import { Bot, Context, InlineKeyboard, webhookCallback } from 'grammy'
+import type { Chat } from 'grammy/types'
 import { randomUUID } from 'crypto'
 import {
   getGroup,
@@ -18,6 +19,24 @@ import { createTranslator, getLocaleFromLanguageCode } from './i18n'
 import { config } from './config'
 import { logger } from './logger'
 import { extractJSON } from './utils'
+
+/**
+ * Type guard to check if chat is a group/supergroup chat with a title
+ */
+function isGroupChat(chat: Chat): chat is Chat.GroupChat | Chat.SupergroupChat {
+  return chat.type === 'group' || chat.type === 'supergroup'
+}
+
+/**
+ * Safely get chat title, returns 'Group' for private chats or if title is unavailable
+ */
+function getChatTitle(chat: Chat | undefined): string {
+  if (!chat) return 'Group'
+  if (isGroupChat(chat)) {
+    return chat.title
+  }
+  return 'Group'
+}
 
 const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
 const MINI_APP_URL = config.MINI_APP_URL
@@ -195,7 +214,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
     group = await createGroup({
       id: groupId,
       chatId: groupId,
-      title: ctx.chat?.type !== 'private' ? (ctx.chat as any).title || 'Group' : 'Private',
+      title: getChatTitle(ctx.chat),
       createdAt: new Date().toISOString(),
       memberCount: 1,
     })
@@ -223,6 +242,9 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 
     if (!parsed || !parsed.amount || parsed.amount <= 0 || (parsed.confidence ?? 0) < 0.5) return
 
+    // Extract amount after validation (TypeScript narrowing)
+    const expenseAmount = parsed.amount
+
     const members = await getGroupMembers(groupId)
     const memberMap = new Map(members.map((m) => [m.username?.toLowerCase(), m]))
 
@@ -242,7 +264,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
     let splits = members.map((m) => ({
       userId: m.id,
       userName: m.name,
-      amount: parsed.amount / members.length,
+      amount: expenseAmount / members.length,
     }))
 
     if (parsed.beneficiaries?.length) {
@@ -251,7 +273,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
         const member = memberMap.get(name.toLowerCase().replace('@', ''))
         if (member) beneficiaryIds.add(member.id)
       }
-      const splitAmount = parsed.amount / beneficiaryIds.size
+      const splitAmount = expenseAmount / beneficiaryIds.size
       splits = Array.from(beneficiaryIds).map((id) => {
         const member = members.find((m) => m.id === id)
         return { userId: id, userName: member?.name || 'Unknown', amount: splitAmount }
@@ -263,14 +285,14 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
       groupId,
       payerId,
       payerName,
-      amount: parsed.amount,
+      amount: expenseAmount,
       description: parsed.description || 'Expense',
       splitType: 'equal',
       splits,
       createdAt: new Date().toISOString(),
     })
 
-    const eachAmount = (parsed.amount / splits.length).toFixed(2)
+    const eachAmount = (expenseAmount / splits.length).toFixed(2)
     const splitText =
       splits.length > 1
         ? t('bot.expense.splitWays', { count: splits.length, each: eachAmount })
@@ -278,13 +300,14 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 
     const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), MINI_APP_URL)
 
+    const description = parsed.description || 'Expense'
     await ctx.reply(
-      `✅ ${t('bot.expense.created', { description: parsed.description, amount: parsed.amount })}\n` +
+      `✅ ${t('bot.expense.created', { description, amount: expenseAmount })}\n` +
         `${t('bot.expense.paidBy', { name: payerName })}\n${splitText}`,
       {
         parse_mode: 'HTML',
         reply_markup: keyboard,
-        reply_parameters: { message_id: ctx.message?.message_id || 0 },
+        reply_parameters: { message_id: ctx.message?.message_id ?? 0 },
       }
     )
   } catch (error) {
@@ -309,7 +332,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
     group = await createGroup({
       id: groupId,
       chatId: groupId,
-      title: ctx.chat?.type !== 'private' ? (ctx.chat as any).title || 'Group' : 'Private',
+      title: getChatTitle(ctx.chat),
       createdAt: new Date().toISOString(),
       memberCount: 1,
     })
@@ -327,13 +350,13 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
     const imageBuffer = await downloadFile(photo.file_id)
     if (!imageBuffer) {
       await ctx.reply(`❌ ${t('bot.receipt.downloadError')}`, {
-        reply_parameters: { message_id: ctx.message?.message_id || 0 },
+        reply_parameters: { message_id: ctx.message?.message_id ?? 0 },
       })
       return
     }
 
     await ctx.reply(`🔍 ${t('bot.receipt.scanning')}`, {
-      reply_parameters: { message_id: ctx.message?.message_id || 0 },
+      reply_parameters: { message_id: ctx.message?.message_id ?? 0 },
     })
 
     const response = await invokeClaudeVision(
@@ -360,14 +383,17 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
       return
     }
 
+    // Calculate total from items if not provided
+    const receiptTotal = parsed.total ?? parsed.items.reduce((sum, item) => sum + item.price, 0)
+
     let summary = `🧾 ${t('bot.receipt.success', { merchant: parsed.merchant || 'Receipt' })}\n\n`
     for (const item of parsed.items.slice(0, 8)) {
-      summary += `• ${item.name}: ${item.price} ${parsed.currency || ''}\n`
+      summary += `• ${item.name}: ${item.price} ${parsed.currency ?? ''}\n`
     }
     if (parsed.items.length > 8) {
       summary += `<i>...+${parsed.items.length - 8}</i>\n`
     }
-    summary += `\n<b>${t('bot.receipt.total', { amount: parsed.total, currency: parsed.currency || '' })}</b>`
+    summary += `\n<b>${t('bot.receipt.total', { amount: receiptTotal, currency: parsed.currency ?? '' })}</b>`
 
     const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), MINI_APP_URL)
 
@@ -378,7 +404,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
   } catch (error) {
     logger.error('Receipt scan error', { groupId, userId: user.id }, error)
     await ctx.reply(`❌ ${t('bot.receipt.scanError')}`, {
-      reply_parameters: { message_id: ctx.message?.message_id || 0 },
+      reply_parameters: { message_id: ctx.message?.message_id ?? 0 },
     })
   }
 }

@@ -36,19 +36,22 @@ app.use('*', timing())
 app.use(
   '*',
   secureHeaders({
-    contentSecurityPolicy: isDevelopment ? false : {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", 'https://telegram.org'],
-      // Use nonce for styles in production - for now allow inline with strict CSP
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'https://api.telegram.org', 'https://tonapi.io'],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      frameAncestors: ["'self'", 'https://web.telegram.org'],
-    },
+    // Disable CSP in development, enable in production
+    ...(isDevelopment ? {} : {
+      contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://telegram.org'],
+        // Use nonce for styles in production - for now allow inline with strict CSP
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'https://api.telegram.org', 'https://tonapi.io'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'", 'https://web.telegram.org'],
+      },
+    }),
     xContentTypeOptions: 'nosniff',
     xFrameOptions: 'SAMEORIGIN', // Allow Telegram iframe
     referrerPolicy: 'strict-origin-when-cross-origin',

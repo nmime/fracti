@@ -19,9 +19,10 @@ export default function ExpensesPage() {
   const [members] = useState<User[]>(demoMembers)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading] = useState(false) // TODO: Implement loading state when fetching from API
 
-  const currentUserId = '1' // In production, get from Telegram user
+  // Use Telegram user ID when available, fallback to demo user '1' for development
+  const currentUserId = user?.id ? String(user.id) : '1'
 
   const filteredExpenses = expenses.filter((expense) => {
     const matchesSearch = expense.description

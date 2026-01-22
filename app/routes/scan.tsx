@@ -52,12 +52,12 @@ export default function ScanPage() {
     reader.readAsDataURL(file)
   }
 
-  const processReceipt = async (imageBase64: string) => {
+  const processReceipt = async (_imageBase64: string) => {
     setIsProcessing(true)
     hapticFeedback.impactOccurred('medium')
 
     try {
-      // In production: const result = await api.parseReceipt(imageBase64)
+      // In production: const result = await api.parseReceipt(_imageBase64)
       // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 2000))
 

@@ -7,9 +7,9 @@ import type { Env } from '../lib/factory'
 import {
   getAllExpenses,
   getAllSettlements,
+  getSettlements,
   createSettlement,
   updateSettlementStatus,
-  getSettlementByCreatedAt,
   getGroup,
   getGroupMembers,
 } from '../lib/dynamodb'
@@ -21,6 +21,9 @@ import {
   settlementIdParamSchema,
   createSettlementSchema,
   updateSettlementSchema,
+  paginationQuerySchema,
+  decodeCursor,
+  encodeCursor,
 } from '../lib/schemas'
 
 export const settlementsRoutes = new Hono<Env>()
@@ -73,28 +76,28 @@ settlementsRoutes.get(
   }
 )
 
-// GET /api/groups/:groupId/settlements - List all settlements
+// GET /api/groups/:groupId/settlements - List settlements (paginated)
 settlementsRoutes.get(
   '/:groupId/settlements',
   zValidator('param', groupIdParamSchema),
+  zValidator('query', paginationQuerySchema),
   async (c) => {
     const { groupId } = c.req.valid('param')
+    const { limit, cursor } = c.req.valid('query')
 
     const group = await getGroup(groupId)
     if (!group) {
       throw new HTTPException(404, { message: 'Group not found' })
     }
 
-    const [settlements, members] = await Promise.all([
-      getAllSettlements(groupId),
-      getGroupMembers(groupId),
-    ])
-
-    const memberMap = createMemberMap(members)
+    const result = await getSettlements(groupId, {
+      limit,
+      lastKey: decodeCursor(cursor),
+    })
 
     return c.json({
       success: true,
-      data: settlements.map((s) => ({
+      data: result.items.map((s) => ({
         id: s.id,
         groupId: s.groupId,
         fromUserId: s.fromUserId,
@@ -106,6 +109,10 @@ settlementsRoutes.get(
         status: s.status,
         createdAt: s.createdAt,
       })),
+      pagination: {
+        hasMore: result.hasMore,
+        nextCursor: encodeCursor(result.lastKey),
+      },
     })
   }
 )

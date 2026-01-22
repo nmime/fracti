@@ -1,6 +1,10 @@
 import type { Context, Next } from 'hono'
 import { validateInitData, validateWidgetData, type TelegramUser } from '../lib/telegram'
 import { isLocalDev } from '../lib/config'
+import { logger } from '../lib/logger'
+
+// Track if we've already logged the dev mode warning (avoid spam)
+let devModeWarningLogged = false
 
 // Extend Hono context with user
 declare module 'hono' {
@@ -82,7 +86,14 @@ async function extractTelegramUser(c: Context): Promise<AuthResult> {
   }
 
   // Development mode: return demo user
+  // WARNING: This bypasses authentication - only enabled when NODE_ENV=development or AWS_SAM_LOCAL=true
   if (isLocalDev) {
+    if (!devModeWarningLogged) {
+      logger.warn('Development mode auth bypass is active - using demo user for unauthenticated requests', {
+        reason: 'No valid Telegram credentials provided in development mode',
+      })
+      devModeWarningLogged = true
+    }
     return { user: getDevUser(), method: 'dev' }
   }
 
