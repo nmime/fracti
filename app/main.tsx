@@ -6,11 +6,14 @@ import { TonConnectUIProvider } from '@tonconnect/ui-react'
 import { TelegramProvider } from '@/lib/telegram'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/toaster'
+import { DeepLinkHandler } from '@/components/DeepLinkHandler'
 import RootLayout from '@/components/RootLayout'
 import HomePage from '@/routes/home'
 import ExpensesPage from '@/routes/expenses'
 import SettlePage from '@/routes/settle'
 import ScanPage from '@/routes/scan'
+import AnalyticsPage from '@/routes/analytics'
+import RecurringPage from '@/routes/recurring'
 import { tonConfig } from '@/lib/config'
 import '@/lib/i18n' // Initialize i18n
 import '@/styles/globals.css'
@@ -33,12 +36,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <TonConnectUIProvider manifestUrl={tonConfig.manifestUrl}>
           <TelegramProvider>
             <BrowserRouter>
+              <DeepLinkHandler />
               <Routes>
                 <Route element={<RootLayout />}>
                   <Route index element={<HomePage />} />
                   <Route path="expenses" element={<ExpensesPage />} />
                   <Route path="settle" element={<SettlePage />} />
                   <Route path="scan" element={<ScanPage />} />
+                  <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="recurring" element={<RecurringPage />} />
                 </Route>
               </Routes>
             </BrowserRouter>

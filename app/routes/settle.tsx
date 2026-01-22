@@ -1,27 +1,37 @@
 import { useState, useMemo, useEffect } from 'react'
-import { CheckCircle, AlertCircle } from 'lucide-react'
+import { CheckCircle, AlertCircle, Coins } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
-import { useTonPayment } from '@/lib/ton'
+import { useTonPayment, type JettonType } from '@/lib/ton'
 import { type Settlement, api } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 import { createDemoSettlements, demoWalletAddresses, demoGroup } from '@/lib/fixtures'
 import { SettlementCard } from '@/components/SettlementCard'
 import { WalletButton } from '@/components/WalletButton'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
 
+type PaymentType = 'TON' | 'USDT' | 'USDC'
+
+const paymentOptions: { type: PaymentType; label: string; color: string }[] = [
+  { type: 'TON', label: 'TON', color: 'bg-blue-500' },
+  { type: 'USDT', label: 'USDT', color: 'bg-green-500' },
+  { type: 'USDC', label: 'USDC', color: 'bg-blue-400' },
+]
+
 export default function SettlePage() {
   const { t } = useTranslation()
   const { user, hapticFeedback } = useTelegram()
   const { toast } = useToast()
-  const { isConnected, sendTransaction } = useTonPayment()
+  const { isConnected, sendTransaction, sendJettonTransaction } = useTonPayment()
   const [settlements, setSettlements] = useState<Settlement[]>(() => createDemoSettlements())
   const [payingId, setPayingId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentType>('TON')
 
   // Use Telegram user ID when available, fallback to demo user '1' for development
   const currentUserId = user?.id ? String(user.id) : '1'
@@ -99,11 +109,24 @@ export default function SettlePage() {
     hapticFeedback.impactOccurred('medium')
 
     try {
-      const boc = await sendTransaction({
-        to: recipientWallet,
-        amount: settlement.amount,
-        comment: `Fracti Settlement #${settlement.id}`,
-      })
+      let boc: string
+
+      if (selectedPaymentType === 'TON') {
+        // Standard TON transfer
+        boc = await sendTransaction({
+          to: recipientWallet,
+          amount: settlement.amount,
+          comment: `Fracti Settlement #${settlement.id}`,
+        })
+      } else {
+        // Jetton (USDT/USDC) transfer
+        boc = await sendJettonTransaction({
+          to: recipientWallet,
+          amount: settlement.amount,
+          jettonType: selectedPaymentType as JettonType,
+          comment: `Fracti Settlement #${settlement.id}`,
+        })
+      }
 
       // Confirm settlement with the API
       try {
@@ -131,7 +154,7 @@ export default function SettlePage() {
         variant: 'success',
       })
     } catch (error) {
-      logger.error('Payment failed', { settlementId: settlement.id }, error)
+      logger.error('Payment failed', { settlementId: settlement.id, paymentType: selectedPaymentType }, error)
       hapticFeedback.notificationOccurred('error')
       toast({
         title: t('toast.paymentError.title'),
@@ -174,6 +197,35 @@ export default function SettlePage() {
           </Card>
         </div>
 
+        {/* Payment Type Selection */}
+        {isConnected && pendingSettlements.length > 0 && (
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">{t('settle.payWith')}:</span>
+                <div className="flex flex-1 gap-2">
+                  {paymentOptions.map((option) => (
+                    <Button
+                      key={option.type}
+                      variant={selectedPaymentType === option.type ? 'default' : 'outline'}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedPaymentType(option.type)
+                        hapticFeedback.selectionChanged()
+                      }}
+                    >
+                      <span className={`mr-1.5 h-2 w-2 rounded-full ${option.color}`} />
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {!isConnected && (
           <Card className="border-yellow-200 bg-yellow-50">
             <CardContent className="flex items-center gap-3 p-4">
@@ -211,6 +263,7 @@ export default function SettlePage() {
                       currentUserId={currentUserId}
                       onPay={handlePay}
                       isLoading={payingId === settlement.id}
+                      paymentType={selectedPaymentType}
                     />
                   ))}
                 </div>

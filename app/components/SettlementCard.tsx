@@ -5,11 +5,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
+type PaymentType = 'TON' | 'USDT' | 'USDC'
+
 interface SettlementCardProps {
   settlement: Settlement
   onPay?: (settlement: Settlement) => void
   currentUserId?: string
   isLoading?: boolean
+  paymentType?: PaymentType
 }
 
 const statusConfig = {
@@ -38,10 +41,12 @@ export function SettlementCard({
   onPay,
   currentUserId,
   isLoading,
+  paymentType = 'TON',
 }: SettlementCardProps) {
   const isFromUser = settlement.fromUserId === currentUserId
   const status = statusConfig[settlement.status]
   const StatusIcon = status.icon
+  const currencyLabel = paymentType
 
   return (
     <Card className={`overflow-hidden ${status.bg}`}>
@@ -92,7 +97,7 @@ export function SettlementCard({
                 onClick={() => onPay(settlement)}
                 disabled={isLoading}
               >
-                {isLoading ? 'Paying...' : 'Pay Now'}
+                {isLoading ? 'Paying...' : `Pay ${currencyLabel}`}
               </Button>
             ) : (
               <div className={`flex items-center gap-1 ${status.color}`}>

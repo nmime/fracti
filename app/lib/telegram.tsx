@@ -32,6 +32,12 @@ interface TelegramTheme {
   secondaryBackgroundColor: string
 }
 
+interface DeepLinkParams {
+  groupId?: string
+  action?: 'view' | 'settle' | 'expense' | 'analytics' | 'recurring'
+  expenseId?: string
+}
+
 interface TelegramContextValue {
   user: TelegramUser | null
   theme: TelegramTheme
@@ -39,6 +45,8 @@ interface TelegramContextValue {
   initDataUnsafe: Record<string, unknown>
   isReady: boolean
   isTelegram: boolean
+  startParam: string | null
+  deepLink: DeepLinkParams
   hapticFeedback: {
     impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void
     notificationOccurred: (type: 'error' | 'success' | 'warning') => void
@@ -78,10 +86,29 @@ const defaultTheme: TelegramTheme = {
 
 const TelegramContext = createContext<TelegramContextValue | null>(null)
 
+// Parse deep link from start_param
+// Format: action_groupId_optionalParams (e.g., "settle_abc123", "expense_abc123_xyz789")
+function parseDeepLink(startParam: string | null): DeepLinkParams {
+  if (!startParam) return {}
+
+  const parts = startParam.split('_')
+  const action = parts[0] as DeepLinkParams['action']
+  const groupId = parts[1]
+  const expenseId = parts[2]
+
+  return {
+    action: ['view', 'settle', 'expense', 'analytics', 'recurring'].includes(action) ? action : 'view',
+    groupId,
+    expenseId,
+  }
+}
+
 export function TelegramProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false)
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [theme, setTheme] = useState<TelegramTheme>(defaultTheme)
+  const [startParam, setStartParam] = useState<string | null>(null)
+  const [deepLink, setDeepLink] = useState<DeepLinkParams>({})
 
   const isTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp
 
@@ -90,6 +117,14 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       setIsReady(true)
       // Use demo user for development (when not running in Telegram)
       setUser(demoUser)
+
+      // Check URL params for development deep linking
+      const urlParams = new URLSearchParams(window.location.search)
+      const devStartParam = urlParams.get('startapp')
+      if (devStartParam) {
+        setStartParam(devStartParam)
+        setDeepLink(parseDeepLink(devStartParam))
+      }
       return
     }
 
@@ -107,6 +142,15 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
           language_code: tgUser.language_code,
           photo_url: tgUser.photo_url,
         })
+      }
+
+      // Parse start_param for deep linking
+      const tgStartParam = (WebApp.initDataUnsafe.start_param as string) || null
+      setStartParam(tgStartParam)
+      setDeepLink(parseDeepLink(tgStartParam))
+
+      if (tgStartParam) {
+        logger.debug('Deep link received', { startParam: tgStartParam, parsed: parseDeepLink(tgStartParam) })
       }
 
       const themeParams = WebApp.themeParams
@@ -178,12 +222,14 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
     initDataUnsafe: isTelegram ? WebApp.initDataUnsafe : {},
     isReady,
     isTelegram,
+    startParam,
+    deepLink,
     hapticFeedback,
     mainButton,
     backButton,
     expand,
     close,
-  }), [user, theme, isReady, isTelegram, hapticFeedback, mainButton, backButton, expand, close])
+  }), [user, theme, isReady, isTelegram, startParam, deepLink, hapticFeedback, mainButton, backButton, expand, close])
 
   return (
     <TelegramContext.Provider value={value}>
