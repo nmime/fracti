@@ -20,7 +20,6 @@ export default function HomePage() {
   const [debtGraph, setDebtGraph] = useState<DebtGraphType>(demoDebtGraph)
   const [group] = useState<Group>(demoGroup)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const userNode = debtGraph.nodes.find((n) => n.name === 'You')
   const userBalance = userNode?.balance ?? 0
@@ -31,7 +30,6 @@ export default function HomePage() {
 
     const loadData = async () => {
       setIsLoading(true)
-      setError(null)
       try {
         // Fetch debt graph from API
         const data = await api.getDebts(group.id)
@@ -42,10 +40,7 @@ export default function HomePage() {
         // Ignore abort errors
         if (err instanceof Error && err.name === 'AbortError') return
         logger.error('Failed to load debt graph', { groupId: group.id }, err)
-        // Keep demo data on error, just log it
-        if (!abortController.signal.aborted) {
-          setError('Failed to load data')
-        }
+        // Keep demo data on error
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false)
