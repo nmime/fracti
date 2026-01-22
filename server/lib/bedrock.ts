@@ -2,10 +2,13 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime'
+import { config } from './config'
 
-const client = new BedrockRuntimeClient({})
+const client = new BedrockRuntimeClient({
+  region: config.AWS_REGION,
+})
 
-const MODEL_ID = process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+const MODEL_ID = config.BEDROCK_MODEL_ID
 
 interface ClaudeMessage {
   role: 'user' | 'assistant'

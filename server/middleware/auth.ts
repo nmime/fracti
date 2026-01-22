@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono'
 import { validateInitData, validateWidgetData, type TelegramUser } from '../lib/telegram'
+import { isLocalDev } from '../lib/config'
 
 // Extend Hono context with user
 declare module 'hono' {
@@ -18,7 +19,7 @@ declare module 'hono' {
  * 3. Development mode bypass
  */
 export async function authMiddleware(c: Context, next: Next) {
-  const isDev = process.env.AWS_SAM_LOCAL === 'true' || process.env.NODE_ENV === 'development'
+  const isDev = isLocalDev
 
   let telegramUser: TelegramUser | null = null
   let authMethod: 'init_data' | 'widget' | 'dev' | null = null
@@ -75,7 +76,7 @@ export async function authMiddleware(c: Context, next: Next) {
  * Require authentication middleware - returns 401 if not authenticated
  */
 export async function requireAuth(c: Context, next: Next) {
-  const isDev = process.env.AWS_SAM_LOCAL === 'true' || process.env.NODE_ENV === 'development'
+  const isDev = isLocalDev
 
   let telegramUser: TelegramUser | null = null
   let authMethod: 'init_data' | 'widget' | 'dev' | null = null

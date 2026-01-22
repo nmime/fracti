@@ -15,9 +15,10 @@ import {
 } from './bedrock'
 import { downloadFile } from './telegram'
 import { createTranslator, getLocaleFromLanguageCode } from './i18n'
+import { config } from './config'
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
-const MINI_APP_URL = process.env.MINI_APP_URL || 'https://t.me/FractiBot/app'
+const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
+const MINI_APP_URL = config.MINI_APP_URL
 
 // Create bot instance
 export const bot = new Bot(BOT_TOKEN)

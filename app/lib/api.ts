@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
+import { apiConfig } from './config'
+
+const API_BASE = apiConfig.baseUrl
 
 interface ApiResponse<T> {
   success: boolean

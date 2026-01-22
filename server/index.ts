@@ -9,6 +9,7 @@ import { handle } from 'hono/aws-lambda'
 import { ZodError } from 'zod'
 
 import type { Env } from './lib/factory'
+import { isDevelopment } from './lib/config'
 import { groupsRoutes } from './routes/groups'
 import { expensesRoutes } from './routes/expenses'
 import { settlementsRoutes } from './routes/settlements'
@@ -143,12 +144,11 @@ app.onError((err, c) => {
   })
 
   // Return generic error in production
-  const isDev = process.env.NODE_ENV === 'development'
   return c.json(
     {
       error: 'Internal Server Error',
-      message: isDev ? err.message : 'An unexpected error occurred',
-      stack: isDev ? err.stack : undefined,
+      message: isDevelopment ? err.message : 'An unexpected error occurred',
+      stack: isDevelopment ? err.stack : undefined,
       requestId,
     },
     500

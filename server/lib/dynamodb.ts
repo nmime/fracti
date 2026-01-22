@@ -8,6 +8,7 @@ import {
   UpdateCommand,
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb'
+import { config } from './config'
 
 const client = new DynamoDBClient({})
 export const docClient = DynamoDBDocumentClient.from(client, {
@@ -16,7 +17,7 @@ export const docClient = DynamoDBDocumentClient.from(client, {
   },
 })
 
-const TABLE_NAME = process.env.TABLE_NAME!
+const TABLE_NAME = config.TABLE_NAME
 
 // Key Builders
 export const keys = {

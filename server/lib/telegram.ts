@@ -1,6 +1,7 @@
 import { validate, parse } from '@grammyjs/validator'
+import { config } from './config'
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
+const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
 
 export interface TelegramUser {
   id: number
