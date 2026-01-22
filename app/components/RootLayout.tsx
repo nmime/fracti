@@ -1,19 +1,21 @@
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { Home, Receipt, Wallet, Camera } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useTelegram } from '@/lib/telegram'
 
 const navItems = [
-  { path: '/', icon: Home, label: 'Home' },
-  { path: '/expenses', icon: Receipt, label: 'Expenses' },
-  { path: '/scan', icon: Camera, label: 'Scan' },
-  { path: '/settle', icon: Wallet, label: 'Settle' },
-]
+  { path: '/', icon: Home, labelKey: 'nav.home' },
+  { path: '/expenses', icon: Receipt, labelKey: 'nav.expenses' },
+  { path: '/scan', icon: Camera, labelKey: 'nav.scan' },
+  { path: '/settle', icon: Wallet, labelKey: 'nav.settle' },
+] as const
 
 export default function RootLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { isReady, theme } = useTelegram()
+  const { t } = useTranslation()
 
   if (!isReady) {
     return (
@@ -48,7 +50,7 @@ export default function RootLayout() {
       {/* Bottom Navigation */}
       <nav className="sticky bottom-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-16 items-center justify-around px-2">
-          {navItems.map(({ path, icon: Icon, label }) => {
+          {navItems.map(({ path, icon: Icon, labelKey }) => {
             const isActive = location.pathname === path
             return (
               <button
@@ -62,7 +64,7 @@ export default function RootLayout() {
                 )}
               >
                 <Icon className={cn('h-5 w-5', isActive && 'text-primary')} />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
               </button>
             )
           })}

@@ -1,0 +1,76 @@
+{
+  "bot": {
+    "welcome": {
+      "private": "Welcome to **Fracti**!",
+      "privateDescription": "I help groups track and split expenses with AI-powered parsing and on-chain settlements via TON.",
+      "group": "**Fracti is ready!**",
+      "groupDescription": "I can now track expenses in this group. Just type naturally like \"I paid 50 for dinner\" and I'll handle the rest!",
+      "openApp": "Open Fracti"
+    },
+    "help": {
+      "title": "**Fracti Commands**",
+      "commands": "Available commands:",
+      "balance": "/balance - View balances",
+      "expenses": "/expenses - Recent expenses",
+      "settle": "/settle - Settlement suggestions",
+      "add": "/add - How to add expenses",
+      "automatic": "**Automatic parsing:**",
+      "automaticDescription": "Just type naturally! Examples:",
+      "example1": "• \"I paid 100 for dinner\"",
+      "example2": "• \"Alice spent 50 on groceries\"",
+      "example3": "• \"Split 200 between me and Bob\"",
+      "openAppCta": "Open the Mini App for full features!"
+    },
+    "balance": {
+      "title": "**Balances**",
+      "openApp": "Open the Mini App to view detailed balances and the debt graph!",
+      "youAreOwed": "You are owed: {{amount}} TON",
+      "youOwe": "You owe: {{amount}} TON",
+      "allSettled": "All settled up!"
+    },
+    "expenses": {
+      "title": "**Recent Expenses**",
+      "openApp": "Open the Mini App to view all expenses!",
+      "noExpenses": "No expenses yet in this group.",
+      "item": "• {{description}}: {{amount}} TON (paid by {{payer}})"
+    },
+    "settle": {
+      "title": "**Settle Up**",
+      "openApp": "Open the Mini App to settle up with TON!",
+      "suggestion": "• {{from}} → {{to}}: {{amount}} TON",
+      "noSettlements": "No pending settlements!"
+    },
+    "add": {
+      "title": "**Adding Expenses**",
+      "description": "Just type naturally in the chat! I'll parse your message automatically.",
+      "examples": "Examples:",
+      "example1": "• \"I paid 100 for dinner with Alice and Bob\"",
+      "example2": "• \"Lunch was 75, split equally\"",
+      "example3": "• \"Taxi 30 TON, me and Charlie\"",
+      "tip": "**Tip:** You can also upload receipt photos for automatic parsing!"
+    },
+    "receipt": {
+      "scanning": "Scanning receipt...",
+      "downloadError": "Failed to download image",
+      "parseError": "Could not read receipt. Try a clearer photo.",
+      "noItems": "No items found in receipt.",
+      "scanError": "Failed to scan receipt",
+      "success": "**{{merchant}}**",
+      "total": "Total: {{amount}} {{currency}}",
+      "items": "{{count}} items found",
+      "confidence": "{{value}}% confidence"
+    },
+    "expense": {
+      "created": "**{{description}}**: {{amount}} TON",
+      "paidBy": "Paid by {{name}}",
+      "splitWays": "Split {{count}} ways ({{each}} each)",
+      "parseError": "I couldn't understand that. Try being more specific!",
+      "createError": "Failed to create expense"
+    },
+    "errors": {
+      "notInGroup": "This command only works in group chats.",
+      "groupNotFound": "Group not found. Start with /start first!",
+      "generic": "Something went wrong. Please try again."
+    }
+  }
+}

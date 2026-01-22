@@ -14,6 +14,7 @@ import {
   VISION_SYSTEM_PROMPT,
 } from './bedrock'
 import { downloadFile } from './telegram'
+import { createTranslator, getLocaleFromLanguageCode } from './i18n'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const MINI_APP_URL = process.env.MINI_APP_URL || 'https://t.me/FractiBot/app'
@@ -21,20 +22,27 @@ const MINI_APP_URL = process.env.MINI_APP_URL || 'https://t.me/FractiBot/app'
 // Create bot instance
 export const bot = new Bot(BOT_TOKEN)
 
+// Helper to get translator for context
+function getT(ctx: Context) {
+  const locale = getLocaleFromLanguageCode(ctx.from?.language_code)
+  return createTranslator(locale)
+}
+
 // Command handlers
 bot.command('start', async (ctx) => {
+  const t = getT(ctx)
   const chatType = ctx.chat?.type
 
   if (chatType === 'private') {
     // Private chat - show welcome with Mini App button
     const keyboard = new InlineKeyboard()
-      .webApp('Open Fracti', MINI_APP_URL)
+      .webApp(t('bot.welcome.openApp'), MINI_APP_URL)
       .row()
       .url('Add to Group', `https://t.me/${ctx.me.username}?startgroup=true`)
 
     await ctx.reply(
-      '👋 Welcome to <b>Fracti</b>!\n\n' +
-        'I help groups track and split expenses with AI-powered parsing and on-chain settlements via TON.\n\n' +
+      `👋 ${t('bot.welcome.private')}\n\n` +
+        `${t('bot.welcome.privateDescription')}\n\n` +
         '<b>How to use:</b>\n' +
         '1. Add me to a group chat\n' +
         '2. Send messages like "I paid 50 for dinner"\n' +
@@ -48,11 +56,11 @@ bot.command('start', async (ctx) => {
     )
   } else {
     // Group chat - show help
-    const keyboard = new InlineKeyboard().webApp('Open Fracti', MINI_APP_URL)
+    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), MINI_APP_URL)
 
     await ctx.reply(
-      '💰 <b>Fracti is ready!</b>\n\n' +
-        'I can now track expenses in this group.\n\n' +
+      `💰 ${t('bot.welcome.group')}\n\n` +
+        `${t('bot.welcome.groupDescription')}\n\n` +
         '<b>Quick start:</b>\n' +
         '• "I paid 50 for dinner with @alice"\n' +
         '• Send a receipt photo\n' +
@@ -67,18 +75,20 @@ bot.command('start', async (ctx) => {
 })
 
 bot.command('help', async (ctx) => {
-  const keyboard = new InlineKeyboard().webApp('Open Mini App', MINI_APP_URL)
+  const t = getT(ctx)
+  const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), MINI_APP_URL)
 
   await ctx.reply(
-    '💰 <b>Fracti Commands</b>\n\n' +
-      '/balance - View balances\n' +
-      '/expenses - Recent expenses\n' +
-      '/settle - Settlement suggestions\n' +
-      '/add - How to add expenses\n\n' +
-      '<b>Automatic parsing:</b>\n' +
-      '• "I paid 50 for dinner with @alice"\n' +
-      '• Send a receipt photo\n\n' +
-      '📱 Open the Mini App for full features!',
+    `💰 ${t('bot.help.title')}\n\n` +
+      `${t('bot.help.balance')}\n` +
+      `${t('bot.help.expenses')}\n` +
+      `${t('bot.help.settle')}\n` +
+      `${t('bot.help.add')}\n\n` +
+      `${t('bot.help.automatic')}\n` +
+      `${t('bot.help.example1')}\n` +
+      `${t('bot.help.example2')}\n` +
+      `${t('bot.help.example3')}\n\n` +
+      `📱 ${t('bot.help.openAppCta')}`,
     {
       parse_mode: 'HTML',
       reply_markup: keyboard,
@@ -87,37 +97,43 @@ bot.command('help', async (ctx) => {
 })
 
 bot.command('balance', async (ctx) => {
-  const keyboard = new InlineKeyboard().webApp('View Balances', MINI_APP_URL)
+  const t = getT(ctx)
+  const keyboard = new InlineKeyboard().webApp(t('bot.balance.title'), MINI_APP_URL)
 
-  await ctx.reply('📊 Open the Mini App to view detailed balances and the debt graph!', {
+  await ctx.reply(`📊 ${t('bot.balance.openApp')}`, {
     reply_markup: keyboard,
   })
 })
 
 bot.command('expenses', async (ctx) => {
-  const keyboard = new InlineKeyboard().webApp('View Expenses', MINI_APP_URL)
+  const t = getT(ctx)
+  const keyboard = new InlineKeyboard().webApp(t('bot.expenses.title'), MINI_APP_URL)
 
-  await ctx.reply('📝 Open the Mini App to view all expenses!', {
+  await ctx.reply(`📝 ${t('bot.expenses.openApp')}`, {
     reply_markup: keyboard,
   })
 })
 
 bot.command('settle', async (ctx) => {
-  const keyboard = new InlineKeyboard().webApp('Settle Up', MINI_APP_URL)
+  const t = getT(ctx)
+  const keyboard = new InlineKeyboard().webApp(t('bot.settle.title'), MINI_APP_URL)
 
-  await ctx.reply('💸 Open the Mini App to settle up with TON!', {
+  await ctx.reply(`💸 ${t('bot.settle.openApp')}`, {
     reply_markup: keyboard,
   })
 })
 
 bot.command('add', async (ctx) => {
+  const t = getT(ctx)
+
   await ctx.reply(
-    '➕ <b>Adding expenses</b>\n\n' +
-      'Just describe the expense naturally:\n' +
-      '• "I paid 50 for dinner"\n' +
-      '• "Bought groceries for 30, split with @alice @bob"\n' +
-      '• Send a receipt photo!\n\n' +
-      "I'll parse it automatically with AI.",
+    `➕ ${t('bot.add.title')}\n\n` +
+      `${t('bot.add.description')}\n\n` +
+      `${t('bot.add.examples')}\n` +
+      `${t('bot.add.example1')}\n` +
+      `${t('bot.add.example2')}\n` +
+      `${t('bot.add.example3')}\n\n` +
+      `${t('bot.add.tip')}`,
     { parse_mode: 'HTML' }
   )
 })
@@ -130,14 +146,23 @@ bot.on('message:text', async (ctx) => {
 
   const text = ctx.message.text.toLowerCase()
 
-  // Check if message looks like an expense
+  // Check if message looks like an expense (multilingual patterns)
   const isExpenseMessage =
     text.includes('@fracti') ||
+    // English patterns
     text.includes('paid') ||
     text.includes('spent') ||
     text.includes('bought') ||
     text.includes('split') ||
-    /\d+\s*(ton|usd|eur|\$|€)/i.test(ctx.message.text)
+    // Russian patterns
+    text.includes('заплатил') ||
+    text.includes('заплатила') ||
+    text.includes('потратил') ||
+    text.includes('потратила') ||
+    text.includes('купил') ||
+    text.includes('купила') ||
+    text.includes('раздели') ||
+    /\d+\s*(ton|usd|eur|rub|руб|\$|€|₽)/i.test(ctx.message.text)
 
   if (!isExpenseMessage) return
 
@@ -152,6 +177,7 @@ bot.on('message:photo', async (ctx) => {
 })
 
 async function handleExpenseMessage(ctx: Context): Promise<void> {
+  const t = getT(ctx)
   const chatId = ctx.chat?.id
   const user = ctx.from
   const text = ctx.message?.text
@@ -235,16 +261,17 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
       createdAt: new Date().toISOString(),
     })
 
+    const eachAmount = (parsed.amount / splits.length).toFixed(2)
     const splitText =
       splits.length > 1
-        ? `Split ${splits.length} ways (${(parsed.amount / splits.length).toFixed(2)} each)`
+        ? t('bot.expense.splitWays', { count: splits.length, each: eachAmount })
         : ''
 
-    const keyboard = new InlineKeyboard().webApp('View Details', MINI_APP_URL)
+    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), MINI_APP_URL)
 
     await ctx.reply(
-      `✅ <b>${parsed.description}</b>: ${parsed.amount} TON\n` +
-        `Paid by ${payerName}\n${splitText}`,
+      `✅ ${t('bot.expense.created', { description: parsed.description, amount: parsed.amount })}\n` +
+        `${t('bot.expense.paidBy', { name: payerName })}\n${splitText}`,
       {
         parse_mode: 'HTML',
         reply_markup: keyboard,
@@ -257,6 +284,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 }
 
 async function handlePhotoMessage(ctx: Context): Promise<void> {
+  const t = getT(ctx)
   const chatId = ctx.chat?.id
   const user = ctx.from
   const photos = ctx.message?.photo
@@ -289,13 +317,13 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
   try {
     const imageBuffer = await downloadFile(photo.file_id)
     if (!imageBuffer) {
-      await ctx.reply('❌ Failed to download image', {
+      await ctx.reply(`❌ ${t('bot.receipt.downloadError')}`, {
         reply_parameters: { message_id: ctx.message?.message_id || 0 },
       })
       return
     }
 
-    await ctx.reply('🔍 Scanning receipt...', {
+    await ctx.reply(`🔍 ${t('bot.receipt.scanning')}`, {
       reply_parameters: { message_id: ctx.message?.message_id || 0 },
     })
 
@@ -307,26 +335,26 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
 
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      await ctx.reply('❌ Could not read receipt. Try a clearer photo.')
+      await ctx.reply(`❌ ${t('bot.receipt.parseError')}`)
       return
     }
 
     const parsed = JSON.parse(jsonMatch[0])
     if (!parsed.items?.length) {
-      await ctx.reply('❌ No items found in receipt.')
+      await ctx.reply(`❌ ${t('bot.receipt.noItems')}`)
       return
     }
 
-    let summary = `🧾 <b>${parsed.merchant || 'Receipt'}</b>\n\n`
+    let summary = `🧾 ${t('bot.receipt.success', { merchant: parsed.merchant || 'Receipt' })}\n\n`
     for (const item of parsed.items.slice(0, 8)) {
       summary += `• ${item.name}: ${item.price} ${parsed.currency || ''}\n`
     }
     if (parsed.items.length > 8) {
-      summary += `<i>...and ${parsed.items.length - 8} more items</i>\n`
+      summary += `<i>...+${parsed.items.length - 8}</i>\n`
     }
-    summary += `\n<b>Total: ${parsed.total} ${parsed.currency || ''}</b>`
+    summary += `\n<b>${t('bot.receipt.total', { amount: parsed.total, currency: parsed.currency || '' })}</b>`
 
-    const keyboard = new InlineKeyboard().webApp('Split This Receipt', MINI_APP_URL)
+    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), MINI_APP_URL)
 
     await ctx.reply(summary, {
       parse_mode: 'HTML',
@@ -334,7 +362,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
     })
   } catch (error) {
     console.error('Receipt scan error:', error)
-    await ctx.reply('❌ Failed to scan receipt', {
+    await ctx.reply(`❌ ${t('bot.receipt.scanError')}`, {
       reply_parameters: { message_id: ctx.message?.message_id || 0 },
     })
   }

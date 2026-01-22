@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
 import { api, type Expense, type User, type CreateExpenseInput } from '@/lib/api'
 import { ExpenseCard } from '@/components/ExpenseCard'
@@ -11,10 +12,10 @@ import { useToast } from '@/components/ui/use-toast'
 
 // Demo data
 const demoMembers: User[] = [
-  { id: '1', telegramId: 123, name: 'You', username: 'you' },
-  { id: '2', telegramId: 456, name: 'Alice', username: 'alice' },
-  { id: '3', telegramId: 789, name: 'Bob', username: 'bob' },
-  { id: '4', telegramId: 101, name: 'Charlie', username: 'charlie' },
+  { id: '1', name: 'You', username: 'you' },
+  { id: '2', name: 'Alice', username: 'alice' },
+  { id: '3', name: 'Bob', username: 'bob' },
+  { id: '4', name: 'Charlie', username: 'charlie' },
 ]
 
 const demoExpenses: Expense[] = [
@@ -66,6 +67,7 @@ const demoExpenses: Expense[] = [
 ]
 
 export default function ExpensesPage() {
+  const { t } = useTranslation()
   const { user } = useTelegram()
   const { toast } = useToast()
   const [expenses, setExpenses] = useState<Expense[]>(demoExpenses)
@@ -106,7 +108,7 @@ export default function ExpensesPage() {
         payerName: members.find((m) => m.id === data.payerId)?.name ?? 'Unknown',
         amount: data.amount,
         description: data.description,
-        splitType: data.splitType,
+        splitType: data.splitType ?? 'equal',
         splits: data.splits.map((s) => ({
           userId: s.userId,
           userName: members.find((m) => m.id === s.userId)?.name ?? 'Unknown',
@@ -116,14 +118,17 @@ export default function ExpensesPage() {
       }
       setExpenses([newExpense, ...expenses])
       toast({
-        title: 'Expense added',
-        description: `${data.description} for ${data.amount} TON`,
+        title: t('toast.expenseAdded.title'),
+        description: t('toast.expenseAdded.description', {
+          description: data.description,
+          amount: data.amount
+        }),
         variant: 'success',
       })
     } catch (error) {
       toast({
-        title: 'Failed to add expense',
-        description: 'Please try again',
+        title: t('toast.expenseError.title'),
+        description: t('toast.expenseError.description'),
         variant: 'destructive',
       })
     }
@@ -134,12 +139,12 @@ export default function ExpensesPage() {
       // In production: await api.deleteExpense('demo', id)
       setExpenses(expenses.filter((e) => e.id !== id))
       toast({
-        title: 'Expense deleted',
+        title: t('toast.expenseDeleted.title'),
         variant: 'success',
       })
     } catch (error) {
       toast({
-        title: 'Failed to delete expense',
+        title: t('toast.deleteError.title'),
         variant: 'destructive',
       })
     }
@@ -150,7 +155,7 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="sticky top-14 z-30 space-y-4 border-b bg-background p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Expenses</h1>
+          <h1 className="text-xl font-bold">{t('expenses.title')}</h1>
           <AddExpenseDialog
             members={members}
             currentUserId={currentUserId}
@@ -162,7 +167,7 @@ export default function ExpensesPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search expenses..."
+            placeholder={t('expenses.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -173,13 +178,13 @@ export default function ExpensesPage() {
         <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
           <TabsList className="w-full">
             <TabsTrigger value="all" className="flex-1">
-              All
+              {t('expenses.tabs.all')}
             </TabsTrigger>
             <TabsTrigger value="mine" className="flex-1">
-              I Paid
+              {t('expenses.tabs.iPaid')}
             </TabsTrigger>
             <TabsTrigger value="owe" className="flex-1">
-              I Owe
+              {t('expenses.tabs.iOwe')}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -194,9 +199,9 @@ export default function ExpensesPage() {
             </div>
           ) : filteredExpenses.length === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center text-center">
-              <p className="text-muted-foreground">No expenses found</p>
+              <p className="text-muted-foreground">{t('expenses.empty.title')}</p>
               <p className="text-sm text-muted-foreground">
-                Add your first expense to get started
+                {t('expenses.empty.description')}
               </p>
             </div>
           ) : (

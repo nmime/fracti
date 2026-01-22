@@ -9,6 +9,7 @@ import HomePage from '@/routes/home'
 import ExpensesPage from '@/routes/expenses'
 import SettlePage from '@/routes/settle'
 import ScanPage from '@/routes/scan'
+import '@/lib/i18n' // Initialize i18n
 import '@/styles/globals.css'
 
 const manifestUrl = 'https://fracti.app/tonconnect-manifest.json'

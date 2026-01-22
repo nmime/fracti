@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
 import { api, type DebtGraph as DebtGraphType, type Group } from '@/lib/api'
@@ -34,6 +35,7 @@ const demoGroup: Group = {
 }
 
 export default function HomePage() {
+  const { t } = useTranslation()
   const { user } = useTelegram()
   const navigate = useNavigate()
   const [debtGraph, setDebtGraph] = useState<DebtGraphType>(demoDebtGraph)
@@ -60,13 +62,19 @@ export default function HomePage() {
     loadData()
   }, [])
 
+  const formatTimeAgo = (hours: number) => {
+    if (hours < 1) return t('home.justNow')
+    if (hours < 24) return t('home.hoursAgo', { count: Math.floor(hours) })
+    return t('home.hoursAgo', { count: Math.floor(hours) })
+  }
+
   return (
     <div className="space-y-6 p-4 pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            Hey, {user?.first_name ?? 'there'}
+            {t('home.greeting', { name: user?.first_name ?? 'there' })}
           </h1>
           <p className="text-sm text-muted-foreground">{group.title}</p>
         </div>
@@ -79,7 +87,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                {isOwed ? 'You are owed' : 'You owe'}
+                {isOwed ? t('home.youAreOwed') : t('home.youOwe')}
               </p>
               <p className={`text-3xl font-bold ${isOwed ? 'text-green-600' : 'text-red-600'}`}>
                 {formatTON(Math.abs(userBalance))} TON
@@ -99,7 +107,7 @@ export default function HomePage() {
               className="mt-4 w-full"
               onClick={() => navigate('/settle')}
             >
-              Settle Up
+              {t('home.settleUp')}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
@@ -109,7 +117,7 @@ export default function HomePage() {
       {/* Debt Graph */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Debt Web</CardTitle>
+          <CardTitle className="text-lg">{t('home.debtWeb')}</CardTitle>
         </CardHeader>
         <CardContent className="p-2">
           {isLoading ? (
@@ -137,7 +145,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="text-2xl font-bold">12</p>
-              <p className="text-xs text-muted-foreground">Expenses</p>
+              <p className="text-xs text-muted-foreground">{t('home.expenses')}</p>
             </div>
           </CardContent>
         </Card>
@@ -148,7 +156,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{group.memberCount}</p>
-              <p className="text-xs text-muted-foreground">Members</p>
+              <p className="text-xs text-muted-foreground">{t('home.members')}</p>
             </div>
           </CardContent>
         </Card>
@@ -158,17 +166,17 @@ export default function HomePage() {
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Recent Activity</CardTitle>
+            <CardTitle className="text-lg">{t('home.recentActivity')}</CardTitle>
             <Button variant="ghost" size="sm" onClick={() => navigate('/expenses')}>
-              View All
+              {t('home.viewAll')}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {[
-            { name: 'Alice', action: 'paid', item: 'Dinner', amount: 120 },
-            { name: 'Bob', action: 'paid', item: 'Uber', amount: 35 },
-            { name: 'You', action: 'paid', item: 'Groceries', amount: 85 },
+            { name: 'Alice', item: 'Dinner', amount: 120, hours: 2 },
+            { name: 'Bob', item: 'Uber', amount: 35, hours: 4 },
+            { name: 'You', item: 'Groceries', amount: 85, hours: 6 },
           ].map((activity, i) => (
             <div key={i} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -179,9 +187,11 @@ export default function HomePage() {
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium">
-                    {activity.name} {activity.action} for {activity.item}
+                    {activity.name} {t('home.paid')} {t('home.for')} {activity.item}
                   </p>
-                  <p className="text-xs text-muted-foreground">2 hours ago</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatTimeAgo(activity.hours)}
+                  </p>
                 </div>
               </div>
               <span className="font-medium text-primary">

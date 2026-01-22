@@ -1,0 +1,182 @@
+{
+  "app": {
+    "name": "Fracti",
+    "tagline": "Делите расходы, платите на блокчейне"
+  },
+  "nav": {
+    "home": "Главная",
+    "expenses": "Расходы",
+    "scan": "Скан",
+    "settle": "Оплата"
+  },
+  "home": {
+    "greeting": "Привет, {{name}}",
+    "youAreOwed": "Тебе должны",
+    "youOwe": "Ты должен",
+    "allSettled": "Всё оплачено!",
+    "settleUp": "Оплатить",
+    "debtWeb": "Граф долгов",
+    "expenses": "Расходы",
+    "members": "Участники",
+    "recentActivity": "Последние действия",
+    "viewAll": "Все",
+    "hoursAgo": "{{count}}ч назад",
+    "minutesAgo": "{{count}}м назад",
+    "justNow": "Только что",
+    "paid": "оплатил",
+    "for": "за"
+  },
+  "expenses": {
+    "title": "Расходы",
+    "search": "Поиск расходов...",
+    "tabs": {
+      "all": "Все",
+      "iPaid": "Я оплатил",
+      "iOwe": "Мне должны"
+    },
+    "empty": {
+      "title": "Расходов не найдено",
+      "description": "Добавьте первый расход"
+    },
+    "paidBy": "Оплатил {{name}}",
+    "paidByYou": "Оплатили вы",
+    "people": "{{count}} чел.",
+    "youOwe": "Вы должны {{amount}}",
+    "youPaid": "Вы оплатили"
+  },
+  "addExpense": {
+    "button": "Добавить",
+    "title": "Новый расход",
+    "description": "Введите данные и выберите участников.",
+    "form": {
+      "description": "Описание",
+      "descriptionPlaceholder": "Ужин, продукты и т.д.",
+      "amount": "Сумма (TON)",
+      "amountPlaceholder": "0.00",
+      "splitWith": "Разделить с",
+      "selectAll": "Выбрать всех",
+      "deselectAll": "Снять выбор",
+      "eachPays": "Каждый платит: {{amount}} TON"
+    },
+    "cancel": "Отмена",
+    "submit": "Добавить",
+    "submitting": "Добавляем..."
+  },
+  "settle": {
+    "title": "Оплатить долги",
+    "youOwe": "Вы должны",
+    "youllReceive": "Вы получите",
+    "connectWallet": "Подключите кошелёк для оплаты",
+    "pending": "Ожидают ({{count}})",
+    "completed": "Завершённые ({{count}})",
+    "allSettled": {
+      "title": "Всё оплачено!",
+      "description": "Нет ожидающих платежей"
+    },
+    "status": {
+      "pending": "Ожидание",
+      "completed": "Завершено",
+      "failed": "Ошибка"
+    },
+    "payNow": "Оплатить",
+    "paying": "Оплата..."
+  },
+  "scan": {
+    "title": "Сканировать чек",
+    "description": "Загрузите чек для автоматического распознавания",
+    "analyzing": "ИИ анализирует...",
+    "uploadCta": "Сфотографируйте или загрузите",
+    "formats": "JPG, PNG, HEIC",
+    "camera": "Камера",
+    "gallery": "Галерея",
+    "orType": "Или напишите сообщение",
+    "typePlaceholder": "Я заплатил 50 TON за ужин с Алисой...",
+    "parse": "Распознать",
+    "parsing": "Распознаём...",
+    "receipt": {
+      "merchant": "Магазин",
+      "date": "Дата",
+      "confidence": "{{value}}% уверенность",
+      "items": "Позиции",
+      "selected": "{{count}} выбрано",
+      "quantity": "Кол-во: {{count}}",
+      "subtotal": "Подытог",
+      "tax": "Налог",
+      "yourShare": "Ваша доля"
+    },
+    "cancel": "Отмена",
+    "createExpense": "Создать расход"
+  },
+  "wallet": {
+    "connect": "Подключить кошелёк",
+    "copyAddress": "Копировать адрес",
+    "disconnect": "Отключить",
+    "copied": "Адрес скопирован!"
+  },
+  "graph": {
+    "empty": "Нет долгов",
+    "owes": "должен"
+  },
+  "toast": {
+    "expenseAdded": {
+      "title": "Расход добавлен",
+      "description": "{{description}} на {{amount}} TON"
+    },
+    "expenseDeleted": {
+      "title": "Расход удалён"
+    },
+    "expenseError": {
+      "title": "Ошибка добавления",
+      "description": "Попробуйте ещё раз"
+    },
+    "deleteError": {
+      "title": "Ошибка удаления"
+    },
+    "scanError": {
+      "title": "Ошибка сканирования",
+      "description": "Попробуйте с более чётким изображением"
+    },
+    "walletNotConnected": {
+      "title": "Кошелёк не подключён",
+      "description": "Сначала подключите TON кошелёк"
+    },
+    "noWalletAddress": {
+      "title": "Нет адреса кошелька",
+      "description": "{{name}} ещё не настроил кошелёк"
+    },
+    "paymentSent": {
+      "title": "Платёж отправлен!",
+      "description": "{{amount}} TON отправлено {{name}}"
+    },
+    "paymentError": {
+      "title": "Ошибка платежа",
+      "description": "{{error}}"
+    },
+    "receiptScanned": {
+      "title": "Чек отсканирован!",
+      "description": "Найдено {{count}} позиций"
+    },
+    "expenseCreated": {
+      "title": "Расход создан!",
+      "description": "{{description}} на {{amount}} TON"
+    },
+    "parseSuccess": {
+      "title": "Сообщение распознано!",
+      "description": "{{description}} — {{amount}} TON"
+    },
+    "parseError": {
+      "title": "Не удалось распознать",
+      "description": "Попробуйте написать точнее"
+    }
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Что-то пошло не так",
+    "retry": "Повторить",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "confirm": "Подтвердить",
+    "ton": "TON"
+  }
+}

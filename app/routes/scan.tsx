@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Camera, Upload, Sparkles, Check, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
 import { api, type ParsedReceipt, type ReceiptItem } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
@@ -21,6 +22,7 @@ const demoReceipt: ParsedReceipt = {
   ],
   total: 73.0,
   tax: 7.3,
+  subtotal: 65.7,
   currency: 'TON',
   merchant: 'La Bella Italia',
   date: '2026-01-22',
@@ -28,10 +30,13 @@ const demoReceipt: ParsedReceipt = {
 }
 
 export default function ScanPage() {
+  const { t } = useTranslation()
   const { hapticFeedback } = useTelegram()
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isParsing, setIsParsing] = useState(false)
+  const [textInput, setTextInput] = useState('')
   const [receipt, setReceipt] = useState<ParsedReceipt | null>(null)
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -67,19 +72,48 @@ export default function ScanPage() {
 
       hapticFeedback.notificationOccurred('success')
       toast({
-        title: 'Receipt scanned!',
-        description: `Found ${demoReceipt.items.length} items`,
+        title: t('toast.receiptScanned.title'),
+        description: t('toast.receiptScanned.description', { count: demoReceipt.items.length }),
         variant: 'success',
       })
     } catch (error) {
       hapticFeedback.notificationOccurred('error')
       toast({
-        title: 'Failed to scan receipt',
-        description: 'Please try again with a clearer image',
+        title: t('toast.scanError.title'),
+        description: t('toast.scanError.description'),
         variant: 'destructive',
       })
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const handleParseText = async () => {
+    if (!textInput.trim()) return
+
+    setIsParsing(true)
+    hapticFeedback.impactOccurred('medium')
+
+    try {
+      // In production: const result = await api.parseText(textInput)
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      hapticFeedback.notificationOccurred('success')
+      toast({
+        title: t('toast.parseSuccess.title'),
+        description: t('toast.parseSuccess.description', { description: 'Dinner', amount: 50 }),
+        variant: 'success',
+      })
+      setTextInput('')
+    } catch (error) {
+      hapticFeedback.notificationOccurred('error')
+      toast({
+        title: t('toast.parseError.title'),
+        description: t('toast.parseError.description'),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsParsing(false)
     }
   }
 
@@ -109,8 +143,11 @@ export default function ScanPage() {
       : `${selectedItemsList.length} items from ${receipt.merchant}`
 
     toast({
-      title: 'Expense created!',
-      description: `${description} for ${formatTON(selectedTotal)} TON`,
+      title: t('toast.expenseCreated.title'),
+      description: t('toast.expenseCreated.description', {
+        description,
+        amount: formatTON(selectedTotal)
+      }),
       variant: 'success',
     })
 
@@ -124,9 +161,9 @@ export default function ScanPage() {
     <div className="flex flex-col p-4 pb-20">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold">Scan Receipt</h1>
+        <h1 className="text-xl font-bold">{t('scan.title')}</h1>
         <p className="text-sm text-muted-foreground">
-          Upload a receipt to automatically extract items
+          {t('scan.description')}
         </p>
       </div>
 
@@ -152,7 +189,7 @@ export default function ScanPage() {
               <CardContent className="flex flex-col items-center gap-2 py-6">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 animate-pulse text-primary" />
-                  <span className="font-medium">AI is analyzing...</span>
+                  <span className="font-medium">{t('scan.analyzing')}</span>
                 </div>
                 <div className="h-2 w-48 overflow-hidden rounded-full bg-secondary">
                   <div className="h-full w-1/2 animate-[shimmer_1s_ease-in-out_infinite] bg-primary" />
@@ -169,19 +206,19 @@ export default function ScanPage() {
                   <Camera className="h-8 w-8 text-primary" />
                 </div>
                 <div className="text-center">
-                  <p className="font-medium">Take a photo or upload</p>
+                  <p className="font-medium">{t('scan.uploadCta')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Supports JPG, PNG, HEIC
+                    {t('scan.formats')}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm">
                     <Camera className="mr-2 h-4 w-4" />
-                    Camera
+                    {t('scan.camera')}
                   </Button>
                   <Button variant="outline" size="sm">
                     <Upload className="mr-2 h-4 w-4" />
-                    Gallery
+                    {t('scan.gallery')}
                   </Button>
                 </div>
               </CardContent>
@@ -190,14 +227,25 @@ export default function ScanPage() {
 
           {/* AI Message Input */}
           <div className="mt-8 w-full max-w-sm">
-            <Label className="text-muted-foreground">Or type a message</Label>
+            <Label className="text-muted-foreground">{t('scan.orType')}</Label>
             <div className="mt-2 flex gap-2">
               <Input
-                placeholder="I paid 50 TON for dinner with Alice..."
+                placeholder={t('scan.typePlaceholder')}
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
                 className="flex-1"
+                onKeyDown={(e) => e.key === 'Enter' && handleParseText()}
               />
-              <Button variant="ton">
-                <Sparkles className="h-4 w-4" />
+              <Button
+                variant="ton"
+                onClick={handleParseText}
+                disabled={isParsing || !textInput.trim()}
+              >
+                {isParsing ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -218,7 +266,7 @@ export default function ScanPage() {
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <span>{Math.round(receipt.confidence * 100)}% confidence</span>
+                <span>{t('scan.receipt.confidence', { value: Math.round(receipt.confidence * 100) })}</span>
               </div>
             </CardContent>
           </Card>
@@ -227,9 +275,9 @@ export default function ScanPage() {
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Items</CardTitle>
+                <CardTitle className="text-base">{t('scan.receipt.items')}</CardTitle>
                 <span className="text-sm text-muted-foreground">
-                  {selectedItems.size} selected
+                  {t('scan.receipt.selected', { count: selectedItems.size })}
                 </span>
               </div>
             </CardHeader>
@@ -259,7 +307,7 @@ export default function ScanPage() {
                           <div>
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              Qty: {item.quantity}
+                              {t('scan.receipt.quantity', { count: item.quantity })}
                             </p>
                           </div>
                         </div>
@@ -278,17 +326,17 @@ export default function ScanPage() {
           <Card>
             <CardContent className="space-y-2 p-4">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
+                <span className="text-muted-foreground">{t('scan.receipt.subtotal')}</span>
                 <span>{formatTON(selectedTotal)} TON</span>
               </div>
               {receipt.tax && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax</span>
+                  <span className="text-muted-foreground">{t('scan.receipt.tax')}</span>
                   <span>{formatTON(receipt.tax)} TON</span>
                 </div>
               )}
               <div className="flex justify-between border-t pt-2 font-medium">
-                <span>Your share</span>
+                <span>{t('scan.receipt.yourShare')}</span>
                 <span className="text-primary">
                   {formatTON(selectedTotal + (receipt.tax ?? 0))} TON
                 </span>
@@ -308,7 +356,7 @@ export default function ScanPage() {
               }}
             >
               <X className="mr-2 h-4 w-4" />
-              Cancel
+              {t('scan.cancel')}
             </Button>
             <Button
               className="flex-1"
@@ -316,7 +364,7 @@ export default function ScanPage() {
               onClick={handleCreateExpense}
             >
               <Check className="mr-2 h-4 w-4" />
-              Create Expense
+              {t('scan.createExpense')}
             </Button>
           </div>
         </div>
