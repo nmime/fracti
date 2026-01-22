@@ -1,0 +1,182 @@
+{
+  "app": {
+    "name": "Fracti",
+    "tagline": "Split expenses, settle on-chain"
+  },
+  "nav": {
+    "home": "Home",
+    "expenses": "Expenses",
+    "scan": "Scan",
+    "settle": "Settle"
+  },
+  "home": {
+    "greeting": "Hey, {{name}}",
+    "youAreOwed": "You are owed",
+    "youOwe": "You owe",
+    "allSettled": "All settled!",
+    "settleUp": "Settle Up",
+    "debtWeb": "Debt Web",
+    "expenses": "Expenses",
+    "members": "Members",
+    "recentActivity": "Recent Activity",
+    "viewAll": "View All",
+    "hoursAgo": "{{count}}h ago",
+    "minutesAgo": "{{count}}m ago",
+    "justNow": "Just now",
+    "paid": "paid",
+    "for": "for"
+  },
+  "expenses": {
+    "title": "Expenses",
+    "search": "Search expenses...",
+    "tabs": {
+      "all": "All",
+      "iPaid": "I Paid",
+      "iOwe": "I Owe"
+    },
+    "empty": {
+      "title": "No expenses found",
+      "description": "Add your first expense to get started"
+    },
+    "paidBy": "Paid by {{name}}",
+    "paidByYou": "Paid by you",
+    "people": "{{count}} people",
+    "youOwe": "You owe {{amount}}",
+    "youPaid": "You paid"
+  },
+  "addExpense": {
+    "button": "Add Expense",
+    "title": "Add New Expense",
+    "description": "Enter the expense details and select who to split with.",
+    "form": {
+      "description": "Description",
+      "descriptionPlaceholder": "Dinner, groceries, etc.",
+      "amount": "Amount (TON)",
+      "amountPlaceholder": "0.00",
+      "splitWith": "Split with",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "eachPays": "Each person pays: {{amount}} TON"
+    },
+    "cancel": "Cancel",
+    "submit": "Add Expense",
+    "submitting": "Adding..."
+  },
+  "settle": {
+    "title": "Settle Up",
+    "youOwe": "You owe",
+    "youllReceive": "You'll receive",
+    "connectWallet": "Connect your wallet to settle payments",
+    "pending": "Pending ({{count}})",
+    "completed": "Completed ({{count}})",
+    "allSettled": {
+      "title": "All settled up!",
+      "description": "No pending payments"
+    },
+    "status": {
+      "pending": "Pending",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "payNow": "Pay Now",
+    "paying": "Paying..."
+  },
+  "scan": {
+    "title": "Scan Receipt",
+    "description": "Upload a receipt to automatically extract items",
+    "analyzing": "AI is analyzing...",
+    "uploadCta": "Take a photo or upload",
+    "formats": "Supports JPG, PNG, HEIC",
+    "camera": "Camera",
+    "gallery": "Gallery",
+    "orType": "Or type a message",
+    "typePlaceholder": "I paid 50 TON for dinner with Alice...",
+    "parse": "Parse",
+    "parsing": "Parsing...",
+    "receipt": {
+      "merchant": "Merchant",
+      "date": "Date",
+      "confidence": "{{value}}% confidence",
+      "items": "Items",
+      "selected": "{{count}} selected",
+      "quantity": "Qty: {{count}}",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "yourShare": "Your share"
+    },
+    "cancel": "Cancel",
+    "createExpense": "Create Expense"
+  },
+  "wallet": {
+    "connect": "Connect Wallet",
+    "copyAddress": "Copy Address",
+    "disconnect": "Disconnect",
+    "copied": "Address copied!"
+  },
+  "graph": {
+    "empty": "No debts to display",
+    "owes": "owes"
+  },
+  "toast": {
+    "expenseAdded": {
+      "title": "Expense added",
+      "description": "{{description}} for {{amount}} TON"
+    },
+    "expenseDeleted": {
+      "title": "Expense deleted"
+    },
+    "expenseError": {
+      "title": "Failed to add expense",
+      "description": "Please try again"
+    },
+    "deleteError": {
+      "title": "Failed to delete expense"
+    },
+    "scanError": {
+      "title": "Failed to scan receipt",
+      "description": "Please try again with a clearer image"
+    },
+    "walletNotConnected": {
+      "title": "Wallet not connected",
+      "description": "Please connect your TON wallet first"
+    },
+    "noWalletAddress": {
+      "title": "No wallet address",
+      "description": "{{name}} hasn't set up their wallet yet"
+    },
+    "paymentSent": {
+      "title": "Payment sent!",
+      "description": "{{amount}} TON sent to {{name}}"
+    },
+    "paymentError": {
+      "title": "Payment failed",
+      "description": "{{error}}"
+    },
+    "receiptScanned": {
+      "title": "Receipt scanned!",
+      "description": "Found {{count}} items"
+    },
+    "expenseCreated": {
+      "title": "Expense created!",
+      "description": "{{description}} for {{amount}} TON"
+    },
+    "parseSuccess": {
+      "title": "Message parsed!",
+      "description": "{{description}} - {{amount}} TON"
+    },
+    "parseError": {
+      "title": "Could not parse",
+      "description": "Try being more specific"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "ton": "TON"
+  }
+}
