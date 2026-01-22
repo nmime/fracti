@@ -5,14 +5,17 @@ import { randomUUID } from 'crypto'
 
 import type { Env } from '../lib/factory'
 import {
-  getExpenses,
-  getSettlements,
+  getAllExpenses,
+  getAllSettlements,
   createSettlement,
+  updateSettlementStatus,
+  getSettlementByCreatedAt,
   getGroup,
   getGroupMembers,
 } from '../lib/dynamodb'
 import { calculateBalances, optimizeSettlements, buildDebtGraph } from '../lib/debt-graph'
-import { authMiddleware, requireAuth, getDevUser } from '../middleware/auth'
+import { authMiddleware, requireAuth, getCurrentUser } from '../middleware/auth'
+import { createMemberMap } from '../lib/utils'
 import {
   groupIdParamSchema,
   settlementIdParamSchema,
@@ -38,8 +41,8 @@ settlementsRoutes.get(
     }
 
     const [expenses, settlements, members] = await Promise.all([
-      getExpenses(groupId),
-      getSettlements(groupId),
+      getAllExpenses(groupId),
+      getAllSettlements(groupId),
       getGroupMembers(groupId),
     ])
 
@@ -83,11 +86,11 @@ settlementsRoutes.get(
     }
 
     const [settlements, members] = await Promise.all([
-      getSettlements(groupId),
+      getAllSettlements(groupId),
       getGroupMembers(groupId),
     ])
 
-    const userMap = new Map(members.map((m) => [m.id, m.name]))
+    const memberMap = createMemberMap(members)
 
     return c.json({
       success: true,
@@ -114,7 +117,7 @@ settlementsRoutes.post(
   zValidator('param', groupIdParamSchema),
   zValidator('json', createSettlementSchema),
   async (c) => {
-    const telegramUser = c.get('telegramUser') || getDevUser()
+    const telegramUser = getCurrentUser(c)
     const { groupId } = c.req.valid('param')
     const { toId, amount, txHash } = c.req.valid('json')
 
@@ -124,9 +127,10 @@ settlementsRoutes.post(
     }
 
     const members = await getGroupMembers(groupId)
+    const memberMap = createMemberMap(members)
     const fromUserId = String(telegramUser.id)
-    const fromMember = members.find((m) => m.id === fromUserId)
-    const toMember = members.find((m) => m.id === toId)
+    const fromMember = memberMap.get(fromUserId)
+    const toMember = memberMap.get(toId)
 
     if (!fromMember) {
       throw new HTTPException(400, { message: 'You are not a member of this group' })
@@ -146,7 +150,7 @@ settlementsRoutes.post(
       fromUserName: fromMember.name,
       toUserId: toId,
       toUserName: toMember.name,
-      amount: Number(amount),
+      amount,
       txHash: txHash || undefined,
       status: txHash ? 'completed' : 'pending',
       createdAt: now,
@@ -163,6 +167,7 @@ settlementsRoutes.put(
   zValidator('param', settlementIdParamSchema),
   zValidator('json', updateSettlementSchema),
   async (c) => {
+    const telegramUser = getCurrentUser(c)
     const { groupId, settlementId } = c.req.valid('param')
     const { txHash, status } = c.req.valid('json')
 
@@ -171,20 +176,33 @@ settlementsRoutes.put(
       throw new HTTPException(404, { message: 'Group not found' })
     }
 
-    const settlements = await getSettlements(groupId)
+    const settlements = await getAllSettlements(groupId)
     const settlement = settlements.find((s) => s.id === settlementId)
 
     if (!settlement) {
       throw new HTTPException(404, { message: 'Settlement not found' })
     }
 
-    // TODO: Actually update in DynamoDB using updateSettlementStatus
+    // Verify the user is the sender of the settlement
+    if (settlement.fromUserId !== String(telegramUser.id)) {
+      throw new HTTPException(403, { message: 'You can only update your own settlements' })
+    }
+
+    // Prevent updating completed/failed settlements
+    if (settlement.status !== 'pending') {
+      throw new HTTPException(400, { message: 'Cannot update a non-pending settlement' })
+    }
+
+    // Update the settlement in DynamoDB
+    const newStatus = status ?? (txHash ? 'completed' : settlement.status)
+    await updateSettlementStatus(groupId, settlement.createdAt, newStatus, txHash)
+
     return c.json({
       success: true,
       data: {
         ...settlement,
         txHash: txHash ?? settlement.txHash,
-        status: status ?? settlement.status,
+        status: newStatus,
       },
     })
   }

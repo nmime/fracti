@@ -1,70 +1,24 @@
-import { useState, useEffect } from 'react'
-import { Wallet, CheckCircle, AlertCircle } from 'lucide-react'
+import { useState } from 'react'
+import { CheckCircle, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
 import { useTonPayment } from '@/lib/ton'
-import { api, type Settlement, type DebtGraph } from '@/lib/api'
+import { type Settlement } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
+import { createDemoSettlements, demoWalletAddresses } from '@/lib/fixtures'
 import { SettlementCard } from '@/components/SettlementCard'
 import { WalletButton } from '@/components/WalletButton'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
-
-// Demo optimized settlements
-const demoSettlements: Settlement[] = [
-  {
-    id: '1',
-    groupId: 'demo',
-    fromUserId: '1',
-    fromUserName: 'You',
-    toUserId: '2',
-    toUserName: 'Alice',
-    amount: 22.0,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    groupId: 'demo',
-    fromUserId: '3',
-    fromUserName: 'Bob',
-    toUserId: '1',
-    toUserName: 'You',
-    amount: 15.5,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    groupId: 'demo',
-    fromUserId: '4',
-    fromUserName: 'Charlie',
-    toUserId: '2',
-    toUserName: 'Alice',
-    amount: 8.0,
-    status: 'completed',
-    txHash: 'abc123def456...',
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-]
-
-// Demo wallet addresses
-const memberWallets: Record<string, string> = {
-  '1': 'EQBynBO23ywHy_CgarY9NK9FTz0yDsG82PtcbSTQgGoXwiuA',
-  '2': 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N',
-  '3': 'EQDtFpEwcFAEcRe5mLVh2N6C0x-_hJEM7W61_JLnSF74p4q2',
-  '4': 'EQAXRGnNd0HO2G0J8eHNvJY6nXXgQn8TQtVzLw8NNJS6_Tci',
-}
 
 export default function SettlePage() {
   const { t } = useTranslation()
   const { user, hapticFeedback } = useTelegram()
   const { toast } = useToast()
   const { isConnected, sendTransaction, address } = useTonPayment()
-  const [settlements, setSettlements] = useState<Settlement[]>(demoSettlements)
+  const [settlements, setSettlements] = useState<Settlement[]>(() => createDemoSettlements())
   const [payingId, setPayingId] = useState<string | null>(null)
 
   const currentUserId = '1'
@@ -90,7 +44,7 @@ export default function SettlePage() {
       return
     }
 
-    const recipientWallet = memberWallets[settlement.toUserId]
+    const recipientWallet = demoWalletAddresses[settlement.toUserId]
     if (!recipientWallet) {
       toast({
         title: t('toast.noWalletAddress.title'),

@@ -12,132 +12,7 @@ declare module 'hono' {
 }
 
 /**
- * Auth middleware - validates Telegram init data or widget data and sets user context
- * Supports multiple authentication methods:
- * 1. Mini App init data (X-Telegram-Init-Data header)
- * 2. Telegram Login Widget (query params or X-Telegram-Widget-Data header)
- * 3. Development mode bypass
- */
-export async function authMiddleware(c: Context, next: Next) {
-  const isDev = isLocalDev
-
-  let telegramUser: TelegramUser | null = null
-  let authMethod: 'init_data' | 'widget' | 'dev' | null = null
-
-  // Try Mini App init data first
-  const initData = c.req.header('x-telegram-init-data') || ''
-  if (initData) {
-    telegramUser = validateInitData(initData)
-    if (telegramUser) authMethod = 'init_data'
-  }
-
-  // Try Widget data if init data not present
-  if (!telegramUser) {
-    // Check header first
-    const widgetDataHeader = c.req.header('x-telegram-widget-data')
-    if (widgetDataHeader) {
-      try {
-        const widgetData = JSON.parse(widgetDataHeader)
-        telegramUser = validateWidgetData(widgetData)
-        if (telegramUser) authMethod = 'widget'
-      } catch {
-        // Invalid JSON in header
-      }
-    }
-
-    // Check query params if header not present
-    if (!telegramUser) {
-      const url = new URL(c.req.url)
-      const params: Record<string, string> = {}
-      url.searchParams.forEach((value, key) => {
-        params[key] = value
-      })
-
-      if (params.hash && params.id && params.auth_date) {
-        telegramUser = validateWidgetData(params)
-        if (telegramUser) authMethod = 'widget'
-      }
-    }
-  }
-
-  // Development mode bypass
-  if (!telegramUser && isDev) {
-    authMethod = 'dev'
-  }
-
-  c.set('telegramUser', telegramUser)
-  c.set('isAuthenticated', !!telegramUser || isDev)
-  c.set('authMethod', authMethod)
-
-  await next()
-}
-
-/**
- * Require authentication middleware - returns 401 if not authenticated
- */
-export async function requireAuth(c: Context, next: Next) {
-  const isDev = isLocalDev
-
-  let telegramUser: TelegramUser | null = null
-  let authMethod: 'init_data' | 'widget' | 'dev' | null = null
-
-  // Try Mini App init data first
-  const initData = c.req.header('x-telegram-init-data') || ''
-  if (initData) {
-    telegramUser = validateInitData(initData)
-    if (telegramUser) authMethod = 'init_data'
-  }
-
-  // Try Widget data if init data not present
-  if (!telegramUser) {
-    const widgetDataHeader = c.req.header('x-telegram-widget-data')
-    if (widgetDataHeader) {
-      try {
-        const widgetData = JSON.parse(widgetDataHeader)
-        telegramUser = validateWidgetData(widgetData)
-        if (telegramUser) authMethod = 'widget'
-      } catch {
-        // Invalid JSON in header
-      }
-    }
-
-    if (!telegramUser) {
-      const url = new URL(c.req.url)
-      const params: Record<string, string> = {}
-      url.searchParams.forEach((value, key) => {
-        params[key] = value
-      })
-
-      if (params.hash && params.id && params.auth_date) {
-        telegramUser = validateWidgetData(params)
-        if (telegramUser) authMethod = 'widget'
-      }
-    }
-  }
-
-  if (!telegramUser && !isDev) {
-    return c.json(
-      {
-        error: 'Unauthorized',
-        message: 'Valid Telegram authentication required (Mini App init data or Login Widget)',
-      },
-      401
-    )
-  }
-
-  if (isDev && !telegramUser) {
-    authMethod = 'dev'
-  }
-
-  c.set('telegramUser', telegramUser)
-  c.set('isAuthenticated', true)
-  c.set('authMethod', authMethod)
-
-  await next()
-}
-
-/**
- * Get mock user for development
+ * Development mode demo user
  */
 export function getDevUser(): TelegramUser {
   return {
@@ -147,4 +22,121 @@ export function getDevUser(): TelegramUser {
     username: 'demouser',
     language_code: 'en',
   }
+}
+
+type AuthResult = {
+  user: TelegramUser | null
+  method: 'init_data' | 'widget' | 'dev' | null
+}
+
+/**
+ * Extract Telegram user from request headers/params
+ * Shared logic between auth middleware variants
+ */
+async function extractTelegramUser(c: Context): Promise<AuthResult> {
+  let user: TelegramUser | null = null
+  let method: AuthResult['method'] = null
+
+  // Try Mini App init data first (most common for Telegram Mini Apps)
+  const initData = c.req.header('x-telegram-init-data') || ''
+  if (initData) {
+    user = validateInitData(initData)
+    if (user) {
+      method = 'init_data'
+      return { user, method }
+    }
+  }
+
+  // Try Widget data from header
+  const widgetDataHeader = c.req.header('x-telegram-widget-data')
+  if (widgetDataHeader) {
+    try {
+      const widgetData = JSON.parse(widgetDataHeader)
+      user = validateWidgetData(widgetData)
+      if (user) {
+        method = 'widget'
+        return { user, method }
+      }
+    } catch {
+      // Invalid JSON in header, continue
+    }
+  }
+
+  // Try Widget data from query params
+  try {
+    const url = new URL(c.req.url)
+    const params: Record<string, string> = {}
+    url.searchParams.forEach((value, key) => {
+      params[key] = value
+    })
+
+    if (params.hash && params.id && params.auth_date) {
+      user = validateWidgetData(params)
+      if (user) {
+        method = 'widget'
+        return { user, method }
+      }
+    }
+  } catch {
+    // URL parsing failed, continue
+  }
+
+  // Development mode: return demo user
+  if (isLocalDev) {
+    return { user: getDevUser(), method: 'dev' }
+  }
+
+  return { user: null, method: null }
+}
+
+/**
+ * Auth middleware - validates Telegram init data or widget data and sets user context
+ * Does NOT reject unauthenticated requests - use requireAuth for that
+ *
+ * Supports multiple authentication methods:
+ * 1. Mini App init data (X-Telegram-Init-Data header)
+ * 2. Telegram Login Widget (query params or X-Telegram-Widget-Data header)
+ * 3. Development mode bypass (returns demo user)
+ */
+export async function authMiddleware(c: Context, next: Next) {
+  const { user, method } = await extractTelegramUser(c)
+
+  c.set('telegramUser', user)
+  c.set('isAuthenticated', user !== null)
+  c.set('authMethod', method)
+
+  await next()
+}
+
+/**
+ * Require authentication middleware - returns 401 if not authenticated
+ * Use this for routes that require a logged-in user
+ */
+export async function requireAuth(c: Context, next: Next) {
+  const { user, method } = await extractTelegramUser(c)
+
+  if (!user) {
+    return c.json(
+      {
+        success: false,
+        error: 'Unauthorized',
+        message: 'Valid Telegram authentication required (Mini App init data or Login Widget)',
+      },
+      401
+    )
+  }
+
+  c.set('telegramUser', user)
+  c.set('isAuthenticated', true)
+  c.set('authMethod', method)
+
+  await next()
+}
+
+/**
+ * Get the current user from context, or dev user if in development
+ * Useful for routes that use authMiddleware but need a user object
+ */
+export function getCurrentUser(c: Context): TelegramUser {
+  return c.get('telegramUser') ?? getDevUser()
 }

@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import WebApp from '@twa-dev/sdk'
+import { demoUser } from '@/lib/fixtures'
 
 interface TelegramUser {
   id: number
@@ -77,13 +78,8 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isTelegram) {
       setIsReady(true)
-      // Mock user for development
-      setUser({
-        id: 123456789,
-        first_name: 'Demo',
-        last_name: 'User',
-        username: 'demouser',
-      })
+      // Use demo user for development (when not running in Telegram)
+      setUser(demoUser)
       return
     }
 
@@ -126,44 +122,58 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isTelegram])
 
-  const value: TelegramContextValue = {
+  // Memoize haptic feedback handlers
+  const hapticFeedback = useMemo(() => ({
+    impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => {
+      if (isTelegram) WebApp.HapticFeedback.impactOccurred(style)
+    },
+    notificationOccurred: (type: 'error' | 'success' | 'warning') => {
+      if (isTelegram) WebApp.HapticFeedback.notificationOccurred(type)
+    },
+    selectionChanged: () => {
+      if (isTelegram) WebApp.HapticFeedback.selectionChanged()
+    },
+  }), [isTelegram])
+
+  // Memoize main button handlers
+  const mainButton = useMemo(() => ({
+    show: () => isTelegram && WebApp.MainButton.show(),
+    hide: () => isTelegram && WebApp.MainButton.hide(),
+    setText: (text: string) => isTelegram && WebApp.MainButton.setText(text),
+    onClick: (callback: () => void) => isTelegram && WebApp.MainButton.onClick(callback),
+    offClick: (callback: () => void) => isTelegram && WebApp.MainButton.offClick(callback),
+    showProgress: (leaveActive?: boolean) => isTelegram && WebApp.MainButton.showProgress(leaveActive),
+    hideProgress: () => isTelegram && WebApp.MainButton.hideProgress(),
+    enable: () => isTelegram && WebApp.MainButton.enable(),
+    disable: () => isTelegram && WebApp.MainButton.disable(),
+  }), [isTelegram])
+
+  // Memoize back button handlers
+  const backButton = useMemo(() => ({
+    show: () => isTelegram && WebApp.BackButton.show(),
+    hide: () => isTelegram && WebApp.BackButton.hide(),
+    onClick: (callback: () => void) => isTelegram && WebApp.BackButton.onClick(callback),
+    offClick: (callback: () => void) => isTelegram && WebApp.BackButton.offClick(callback),
+  }), [isTelegram])
+
+  // Memoize expand and close
+  const expand = useCallback(() => isTelegram && WebApp.expand(), [isTelegram])
+  const close = useCallback(() => isTelegram && WebApp.close(), [isTelegram])
+
+  // Memoize the entire context value
+  const value = useMemo<TelegramContextValue>(() => ({
     user,
     theme,
     initData: isTelegram ? WebApp.initData : '',
     initDataUnsafe: isTelegram ? WebApp.initDataUnsafe : {},
     isReady,
     isTelegram,
-    hapticFeedback: {
-      impactOccurred: (style) => {
-        if (isTelegram) WebApp.HapticFeedback.impactOccurred(style)
-      },
-      notificationOccurred: (type) => {
-        if (isTelegram) WebApp.HapticFeedback.notificationOccurred(type)
-      },
-      selectionChanged: () => {
-        if (isTelegram) WebApp.HapticFeedback.selectionChanged()
-      },
-    },
-    mainButton: {
-      show: () => isTelegram && WebApp.MainButton.show(),
-      hide: () => isTelegram && WebApp.MainButton.hide(),
-      setText: (text) => isTelegram && WebApp.MainButton.setText(text),
-      onClick: (callback) => isTelegram && WebApp.MainButton.onClick(callback),
-      offClick: (callback) => isTelegram && WebApp.MainButton.offClick(callback),
-      showProgress: (leaveActive) => isTelegram && WebApp.MainButton.showProgress(leaveActive),
-      hideProgress: () => isTelegram && WebApp.MainButton.hideProgress(),
-      enable: () => isTelegram && WebApp.MainButton.enable(),
-      disable: () => isTelegram && WebApp.MainButton.disable(),
-    },
-    backButton: {
-      show: () => isTelegram && WebApp.BackButton.show(),
-      hide: () => isTelegram && WebApp.BackButton.hide(),
-      onClick: (callback) => isTelegram && WebApp.BackButton.onClick(callback),
-      offClick: (callback) => isTelegram && WebApp.BackButton.offClick(callback),
-    },
-    expand: () => isTelegram && WebApp.expand(),
-    close: () => isTelegram && WebApp.close(),
-  }
+    hapticFeedback,
+    mainButton,
+    backButton,
+    expand,
+    close,
+  }), [user, theme, isReady, isTelegram, hapticFeedback, mainButton, backButton, expand, close])
 
   return (
     <TelegramContext.Provider value={value}>

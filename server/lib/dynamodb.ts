@@ -50,7 +50,7 @@ export interface GroupRecord {
   memberCount: number
 }
 
-export interface UserRecord {
+export interface MemberRecord {
   PK: string
   SK: string
   id: string
@@ -62,6 +62,9 @@ export interface UserRecord {
   GSI1PK?: string
   GSI1SK?: string
 }
+
+// Alias for backwards compatibility
+export type UserRecord = MemberRecord
 
 export interface ExpenseRecord {
   PK: string
@@ -97,6 +100,18 @@ export interface SettlementRecord {
   createdAt: string
 }
 
+// Pagination types
+export interface PaginationOptions {
+  limit?: number
+  lastKey?: Record<string, unknown>
+}
+
+export interface PaginatedResult<T> {
+  items: T[]
+  lastKey?: Record<string, unknown>
+  hasMore: boolean
+}
+
 // Operations
 
 export async function getGroup(groupId: string): Promise<GroupRecord | null> {
@@ -106,7 +121,7 @@ export async function getGroup(groupId: string): Promise<GroupRecord | null> {
       Key: keys.group(groupId),
     })
   )
-  return (result.Item as GroupRecord) || null
+  return (result.Item as GroupRecord) ?? null
 }
 
 export async function createGroup(
@@ -138,27 +153,27 @@ export async function getGroupsByUser(
       },
     })
   )
-  return (result.Items as GroupRecord[]) || []
+  return (result.Items as GroupRecord[]) ?? []
 }
 
 export async function getUser(
   groupId: string,
   telegramId: number
-): Promise<UserRecord | null> {
+): Promise<MemberRecord | null> {
   const result = await docClient.send(
     new GetCommand({
       TableName: TABLE_NAME,
       Key: keys.user(groupId, telegramId),
     })
   )
-  return (result.Item as UserRecord) || null
+  return (result.Item as MemberRecord) ?? null
 }
 
 export async function upsertUser(
   groupId: string,
-  user: Omit<UserRecord, 'PK' | 'SK'>
-): Promise<UserRecord> {
-  const item: UserRecord = {
+  user: Omit<MemberRecord, 'PK' | 'SK'>
+): Promise<MemberRecord> {
+  const item: MemberRecord = {
     ...keys.user(groupId, user.telegramId),
     ...user,
     GSI1PK: `USER#${user.telegramId}`,
@@ -173,7 +188,24 @@ export async function upsertUser(
   return item
 }
 
-export async function getGroupMembers(groupId: string): Promise<UserRecord[]> {
+export async function updateUserWallet(
+  groupId: string,
+  telegramId: number,
+  wallet: string
+): Promise<void> {
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: keys.user(groupId, telegramId),
+      UpdateExpression: 'SET wallet = :wallet',
+      ExpressionAttributeValues: {
+        ':wallet': wallet,
+      },
+    })
+  )
+}
+
+export async function getGroupMembers(groupId: string): Promise<MemberRecord[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -184,10 +216,13 @@ export async function getGroupMembers(groupId: string): Promise<UserRecord[]> {
       },
     })
   )
-  return (result.Items as UserRecord[]) || []
+  return (result.Items as MemberRecord[]) ?? []
 }
 
-export async function getExpenses(groupId: string): Promise<ExpenseRecord[]> {
+export async function getExpenses(
+  groupId: string,
+  options?: PaginationOptions
+): Promise<PaginatedResult<ExpenseRecord>> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -197,9 +232,22 @@ export async function getExpenses(groupId: string): Promise<ExpenseRecord[]> {
         ':sk': 'TX#',
       },
       ScanIndexForward: false, // newest first
+      Limit: options?.limit,
+      ExclusiveStartKey: options?.lastKey as Record<string, any> | undefined,
     })
   )
-  return (result.Items as ExpenseRecord[]) || []
+
+  return {
+    items: (result.Items as ExpenseRecord[]) ?? [],
+    lastKey: result.LastEvaluatedKey as Record<string, unknown> | undefined,
+    hasMore: !!result.LastEvaluatedKey,
+  }
+}
+
+// Convenience method for backwards compatibility
+export async function getAllExpenses(groupId: string): Promise<ExpenseRecord[]> {
+  const result = await getExpenses(groupId)
+  return result.items
 }
 
 export async function createExpense(
@@ -231,8 +279,9 @@ export async function deleteExpense(
 }
 
 export async function getSettlements(
-  groupId: string
-): Promise<SettlementRecord[]> {
+  groupId: string,
+  options?: PaginationOptions
+): Promise<PaginatedResult<SettlementRecord>> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -242,9 +291,22 @@ export async function getSettlements(
         ':sk': 'SETTLE#',
       },
       ScanIndexForward: false,
+      Limit: options?.limit,
+      ExclusiveStartKey: options?.lastKey as Record<string, any> | undefined,
     })
   )
-  return (result.Items as SettlementRecord[]) || []
+
+  return {
+    items: (result.Items as SettlementRecord[]) ?? [],
+    lastKey: result.LastEvaluatedKey as Record<string, unknown> | undefined,
+    hasMore: !!result.LastEvaluatedKey,
+  }
+}
+
+// Convenience method for backwards compatibility
+export async function getAllSettlements(groupId: string): Promise<SettlementRecord[]> {
+  const result = await getSettlements(groupId)
+  return result.items
 }
 
 export async function createSettlement(
@@ -269,18 +331,70 @@ export async function updateSettlementStatus(
   status: SettlementRecord['status'],
   txHash?: string
 ): Promise<void> {
+  const updateExpression = txHash
+    ? 'SET #status = :status, txHash = :txHash'
+    : 'SET #status = :status'
+
+  const expressionValues: Record<string, unknown> = {
+    ':status': status,
+  }
+
+  if (txHash) {
+    expressionValues[':txHash'] = txHash
+  }
+
   await docClient.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
       Key: keys.settlement(groupId, createdAt),
-      UpdateExpression: 'SET #status = :status, txHash = :txHash',
+      UpdateExpression: updateExpression,
       ExpressionAttributeNames: {
         '#status': 'status',
       },
-      ExpressionAttributeValues: {
-        ':status': status,
-        ':txHash': txHash,
-      },
+      ExpressionAttributeValues: expressionValues,
     })
   )
+}
+
+export async function getSettlementByCreatedAt(
+  groupId: string,
+  createdAt: string
+): Promise<SettlementRecord | null> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: keys.settlement(groupId, createdAt),
+    })
+  )
+  return (result.Item as SettlementRecord) ?? null
+}
+
+// Batch operations
+export async function batchCreateExpenses(
+  expenses: Array<Omit<ExpenseRecord, 'PK' | 'SK'>>
+): Promise<void> {
+  if (expenses.length === 0) return
+
+  // DynamoDB BatchWrite has a limit of 25 items
+  const chunks: Array<Omit<ExpenseRecord, 'PK' | 'SK'>[]> = []
+  for (let i = 0; i < expenses.length; i += 25) {
+    chunks.push(expenses.slice(i, i + 25))
+  }
+
+  for (const chunk of chunks) {
+    await docClient.send(
+      new BatchWriteCommand({
+        RequestItems: {
+          [TABLE_NAME]: chunk.map((expense) => ({
+            PutRequest: {
+              Item: {
+                ...keys.expense(expense.groupId, expense.createdAt),
+                ...expense,
+              },
+            },
+          })),
+        },
+      })
+    )
+  }
 }

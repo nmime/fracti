@@ -3,36 +3,14 @@ import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
-import { api, type DebtGraph as DebtGraphType, type Group } from '@/lib/api'
+import { type DebtGraph as DebtGraphType, type Group } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
+import { demoDebtGraph, demoGroup, demoRecentActivity } from '@/lib/fixtures'
 import { DebtGraph } from '@/components/DebtGraph'
 import { WalletButton } from '@/components/WalletButton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-
-// Demo data for visualization
-const demoDebtGraph: DebtGraphType = {
-  nodes: [
-    { id: '1', name: 'You', balance: 45.5, wallet: 'EQA...' },
-    { id: '2', name: 'Alice', balance: -22.0 },
-    { id: '3', name: 'Bob', balance: -15.5 },
-    { id: '4', name: 'Charlie', balance: -8.0 },
-  ],
-  edges: [
-    { from: '2', to: '1', amount: 22.0 },
-    { from: '3', to: '1', amount: 15.5 },
-    { from: '4', to: '1', amount: 8.0 },
-  ],
-}
-
-const demoGroup: Group = {
-  id: 'demo',
-  chatId: '123456',
-  title: 'Vegas Trip',
-  createdAt: new Date().toISOString(),
-  memberCount: 4,
-}
 
 export default function HomePage() {
   const { t } = useTranslation()
@@ -173,11 +151,7 @@ export default function HomePage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {[
-            { name: 'Alice', item: 'Dinner', amount: 120, hours: 2 },
-            { name: 'Bob', item: 'Uber', amount: 35, hours: 4 },
-            { name: 'You', item: 'Groceries', amount: 85, hours: 6 },
-          ].map((activity, i) => (
+          {demoRecentActivity.map((activity, i) => (
             <div key={i} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">

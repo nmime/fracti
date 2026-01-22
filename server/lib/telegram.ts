@@ -1,7 +1,11 @@
 import { validate, parse } from '@grammyjs/validator'
+import { createHash, createHmac } from 'crypto'
 import { config } from './config'
 
 const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
+
+// Auth window in seconds (5 minutes for security)
+const AUTH_WINDOW_SECONDS = 300
 
 export interface TelegramUser {
   id: number
@@ -107,15 +111,12 @@ export function validateWidgetData(data: Record<string, string>): TelegramUser |
       .join('\n')
 
     // Create secret key using SHA-256 of bot token
-    const crypto = require('crypto')
-    const secretKey = crypto
-      .createHash('sha256')
+    const secretKey = createHash('sha256')
       .update(BOT_TOKEN)
       .digest()
 
     // Calculate HMAC-SHA-256
-    const calculatedHash = crypto
-      .createHmac('sha256', secretKey)
+    const calculatedHash = createHmac('sha256', secretKey)
       .update(checkFields)
       .digest('hex')
 
@@ -124,11 +125,11 @@ export function validateWidgetData(data: Record<string, string>): TelegramUser |
       return null
     }
 
-    // Check auth_date is not too old (allow 1 day)
+    // Check auth_date is not too old (5 minutes for security)
     const authDate = parseInt(data.auth_date, 10)
     const now = Math.floor(Date.now() / 1000)
-    if (now - authDate > 86400) {
-      console.warn('Widget auth_date too old')
+    if (now - authDate > AUTH_WINDOW_SECONDS) {
+      console.warn('Widget auth_date expired')
       return null
     }
 

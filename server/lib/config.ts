@@ -40,6 +40,12 @@ const envSchema = z.object({
   AWS_REGION: z
     .string()
     .default('us-east-1'),
+
+  // CORS - comma-separated list of allowed origins
+  ALLOWED_ORIGINS: z
+    .string()
+    .default('https://t.me,https://web.telegram.org')
+    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean)),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -79,3 +85,14 @@ export const isDevelopment = config.NODE_ENV === 'development'
 export const isProduction = config.NODE_ENV === 'production'
 export const isTest = config.NODE_ENV === 'test'
 export const isLocalDev = config.AWS_SAM_LOCAL || isDevelopment
+
+/**
+ * Get allowed origins for CORS
+ * In development, allow all origins
+ */
+export function getAllowedOrigins(): string[] | '*' {
+  if (isLocalDev) {
+    return '*'
+  }
+  return config.ALLOWED_ORIGINS
+}

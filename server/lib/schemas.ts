@@ -1,6 +1,54 @@
 import { z } from 'zod'
 
 // ============================================
+// Custom Validators
+// ============================================
+
+/**
+ * Safe amount validator - prevents overflow and ensures reasonable bounds
+ */
+const safeAmount = z
+  .number()
+  .positive('Amount must be positive')
+  .max(Number.MAX_SAFE_INTEGER, 'Amount too large')
+  .refine((n) => Number.isFinite(n), 'Amount must be a finite number')
+
+/**
+ * TON wallet address validator
+ * Format: EQ or UQ prefix followed by 46 base64url characters
+ */
+const tonWalletAddress = z
+  .string()
+  .regex(
+    /^(EQ|UQ)[A-Za-z0-9_-]{46}$/,
+    'Invalid TON wallet address format'
+  )
+
+/**
+ * Base64 image validator with size limit
+ * Max 1MB base64 encoded (~750KB raw image)
+ */
+const base64Image = z
+  .string()
+  .min(1, 'Image is required')
+  .max(1_400_000, 'Image too large (max 1MB)')
+  .refine(
+    (s) => /^[A-Za-z0-9+/=]+$/.test(s),
+    'Invalid base64 encoding'
+  )
+  .refine(
+    (s) => s.length % 4 === 0,
+    'Invalid base64 padding'
+  )
+
+/**
+ * Transaction hash validator (64 hex characters)
+ */
+const txHash = z
+  .string()
+  .regex(/^[a-fA-F0-9]{64}$/, 'Invalid transaction hash format')
+
+// ============================================
 // Common Schemas
 // ============================================
 
@@ -28,11 +76,11 @@ export const createGroupSchema = z.object({
 })
 
 export const joinGroupSchema = z.object({
-  wallet: z.string().optional(),
+  wallet: tonWalletAddress.optional(),
 })
 
 export const updateWalletSchema = z.object({
-  wallet: z.string().min(1, 'Wallet address is required'),
+  wallet: tonWalletAddress,
 })
 
 // ============================================
@@ -41,15 +89,20 @@ export const updateWalletSchema = z.object({
 
 export const splitSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
-  amount: z.number().positive().optional(),
+  amount: safeAmount.optional(),
+  percentage: z.number().min(0).max(100).optional(),
 })
 
 export const createExpenseSchema = z.object({
   payerId: z.string().min(1, 'Payer ID is required'),
-  amount: z.number().positive('Amount must be positive'),
-  description: z.string().min(1, 'Description is required').max(200, 'Description too long'),
+  amount: safeAmount,
+  description: z
+    .string()
+    .min(1, 'Description is required')
+    .max(200, 'Description too long')
+    .trim(),
   splitType: z.enum(['equal', 'exact', 'percentage']).default('equal'),
-  splits: z.array(splitSchema).min(1, 'At least one split required'),
+  splits: z.array(splitSchema).min(1, 'At least one split required').max(50, 'Too many splits'),
 })
 
 // ============================================
@@ -58,13 +111,13 @@ export const createExpenseSchema = z.object({
 
 export const createSettlementSchema = z.object({
   toId: z.string().min(1, 'Recipient ID is required'),
-  amount: z.number().positive('Amount must be positive'),
-  txHash: z.string().optional(),
+  amount: safeAmount,
+  txHash: txHash.optional(),
 })
 
 export const updateSettlementSchema = z.object({
-  txHash: z.string().optional(),
-  status: z.enum(['pending', 'confirmed', 'failed']).optional(),
+  txHash: txHash.optional(),
+  status: z.enum(['pending', 'completed', 'failed']).optional(),
 })
 
 // ============================================
@@ -72,28 +125,65 @@ export const updateSettlementSchema = z.object({
 // ============================================
 
 export const parseTextSchema = z.object({
-  text: z.string().min(1, 'Text is required').max(1000, 'Text too long'),
+  text: z
+    .string()
+    .min(1, 'Text is required')
+    .max(1000, 'Text too long')
+    .trim(),
   context: z
     .object({
-      members: z.array(z.string()).optional(),
+      members: z.array(z.string()).max(100).optional(),
       groupId: z.string().optional(),
     })
     .optional(),
 })
 
 export const parseVisionSchema = z.object({
-  image: z.string().min(1, 'Image (base64) is required'),
-  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']).default('image/jpeg'),
+  image: base64Image,
+  mimeType: z
+    .enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+    .default('image/jpeg'),
 })
 
 // ============================================
-// Response Types (for documentation)
+// Parsed AI Response Schemas
+// ============================================
+
+export const parsedExpenseSchema = z.object({
+  amount: z.number().positive(),
+  description: z.string(),
+  payer: z.string().optional(),
+  beneficiaries: z.array(z.string()).optional(),
+  confidence: z.number().min(0).max(1),
+})
+
+export const parsedReceiptItemSchema = z.object({
+  name: z.string(),
+  quantity: z.number().positive().default(1),
+  price: z.number().positive(),
+})
+
+export const parsedReceiptSchema = z.object({
+  items: z.array(parsedReceiptItemSchema),
+  total: z.number().positive(),
+  tax: z.number().optional(),
+  subtotal: z.number().optional(),
+  currency: z.string().default('TON'),
+  merchant: z.string().optional(),
+  date: z.string().optional(),
+  confidence: z.number().min(0).max(1),
+})
+
+// ============================================
+// Response Types
 // ============================================
 
 export type ApiError = {
+  success: false
   error: string
-  message: string
+  message?: string
   details?: unknown
+  requestId?: string
 }
 
 export type ApiSuccess<T> = {
@@ -101,9 +191,17 @@ export type ApiSuccess<T> = {
   data: T
 }
 
-// Inferred types for use in handlers
+export type ApiResponse<T> = ApiSuccess<T> | ApiError
+
+// ============================================
+// Inferred Types
+// ============================================
+
 export type CreateGroupInput = z.infer<typeof createGroupSchema>
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>
 export type CreateSettlementInput = z.infer<typeof createSettlementSchema>
+export type UpdateSettlementInput = z.infer<typeof updateSettlementSchema>
 export type ParseTextInput = z.infer<typeof parseTextSchema>
 export type ParseVisionInput = z.infer<typeof parseVisionSchema>
+export type ParsedExpense = z.infer<typeof parsedExpenseSchema>
+export type ParsedReceipt = z.infer<typeof parsedReceiptSchema>

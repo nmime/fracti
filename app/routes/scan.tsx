@@ -2,32 +2,15 @@ import { useState, useRef } from 'react'
 import { Camera, Upload, Sparkles, Check, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
-import { api, type ParsedReceipt, type ReceiptItem } from '@/lib/api'
+import { type ParsedReceipt } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
+import { demoReceipt } from '@/lib/fixtures'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/use-toast'
-
-// Demo parsed receipt
-const demoReceipt: ParsedReceipt = {
-  items: [
-    { name: 'Margherita Pizza', quantity: 2, price: 24.0 },
-    { name: 'Caesar Salad', quantity: 1, price: 12.0 },
-    { name: 'Sparkling Water', quantity: 3, price: 9.0 },
-    { name: 'Tiramisu', quantity: 2, price: 16.0 },
-    { name: 'Espresso', quantity: 4, price: 12.0 },
-  ],
-  total: 73.0,
-  tax: 7.3,
-  subtotal: 65.7,
-  currency: 'TON',
-  merchant: 'La Bella Italia',
-  date: '2026-01-22',
-  confidence: 0.94,
-}
 
 export default function ScanPage() {
   const { t } = useTranslation()

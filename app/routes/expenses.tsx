@@ -1,76 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
-import { api, type Expense, type User, type CreateExpenseInput } from '@/lib/api'
+import { type Expense, type User, type CreateExpenseInput } from '@/lib/api'
+import { demoMembers, createDemoExpenses } from '@/lib/fixtures'
 import { ExpenseCard } from '@/components/ExpenseCard'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
-
-// Demo data
-const demoMembers: User[] = [
-  { id: '1', name: 'You', username: 'you' },
-  { id: '2', name: 'Alice', username: 'alice' },
-  { id: '3', name: 'Bob', username: 'bob' },
-  { id: '4', name: 'Charlie', username: 'charlie' },
-]
-
-const demoExpenses: Expense[] = [
-  {
-    id: '1',
-    groupId: 'demo',
-    payerId: '2',
-    payerName: 'Alice',
-    amount: 120,
-    description: 'Dinner at Italian Restaurant',
-    splitType: 'equal',
-    splits: [
-      { userId: '1', userName: 'You', amount: 30 },
-      { userId: '2', userName: 'Alice', amount: 30 },
-      { userId: '3', userName: 'Bob', amount: 30 },
-      { userId: '4', userName: 'Charlie', amount: 30 },
-    ],
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    groupId: 'demo',
-    payerId: '1',
-    payerName: 'You',
-    amount: 85,
-    description: 'Groceries',
-    splitType: 'equal',
-    splits: [
-      { userId: '1', userName: 'You', amount: 28.33 },
-      { userId: '2', userName: 'Alice', amount: 28.33 },
-      { userId: '3', userName: 'Bob', amount: 28.34 },
-    ],
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    groupId: 'demo',
-    payerId: '3',
-    payerName: 'Bob',
-    amount: 35,
-    description: 'Uber to airport',
-    splitType: 'equal',
-    splits: [
-      { userId: '1', userName: 'You', amount: 17.5 },
-      { userId: '3', userName: 'Bob', amount: 17.5 },
-    ],
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-]
 
 export default function ExpensesPage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
   const { toast } = useToast()
-  const [expenses, setExpenses] = useState<Expense[]>(demoExpenses)
+  const [expenses, setExpenses] = useState<Expense[]>(() => createDemoExpenses())
   const [members] = useState<User[]>(demoMembers)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
