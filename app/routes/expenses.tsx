@@ -102,7 +102,8 @@ export default function ExpensesPage() {
         }),
         variant: 'success',
       })
-    } catch (error) {
+    } catch (err) {
+      logger.error('Failed to add expense', { groupId }, err)
       toast({
         title: t('toast.expenseError.title'),
         description: t('toast.expenseError.description'),
@@ -119,7 +120,8 @@ export default function ExpensesPage() {
         title: t('toast.expenseDeleted.title'),
         variant: 'success',
       })
-    } catch (error) {
+    } catch (err) {
+      logger.error('Failed to delete expense', { groupId, expenseId: id }, err)
       toast({
         title: t('toast.deleteError.title'),
         variant: 'destructive',

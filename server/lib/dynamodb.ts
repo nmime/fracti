@@ -237,7 +237,7 @@ export async function getExpenses(
       },
       ScanIndexForward: false, // newest first
       Limit: options?.limit,
-      ExclusiveStartKey: options?.lastKey as Record<string, any> | undefined,
+      ExclusiveStartKey: options?.lastKey,
     })
   )
 
@@ -317,7 +317,7 @@ export async function getSettlements(
       },
       ScanIndexForward: false,
       Limit: options?.limit,
-      ExclusiveStartKey: options?.lastKey as Record<string, any> | undefined,
+      ExclusiveStartKey: options?.lastKey,
     })
   )
 
