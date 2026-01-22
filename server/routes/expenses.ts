@@ -63,9 +63,11 @@ expensesRoutes.get(
         payerId: e.payerId,
         payerName: e.payerName,
         amount: e.amount,
+        currency: e.currency,
         description: e.description,
         splitType: e.splitType,
         splits: e.splits,
+        category: e.category,
         createdAt: e.createdAt,
       })),
       pagination: {
@@ -84,7 +86,7 @@ expensesRoutes.post(
   zValidator('json', createExpenseSchema),
   async (c) => {
     const { groupId } = c.req.valid('param')
-    const { payerId, amount, description, splitType, splits } = c.req.valid('json')
+    const { payerId, amount, description, splitType, splits, category, currency } = c.req.valid('json')
 
     const group = await getGroup(groupId)
     if (!group) {
@@ -106,9 +108,11 @@ expensesRoutes.post(
     const expense = await createExpense({
       id,
       groupId,
+      groupTitle: group.title,
       payerId,
       payerName: payer.name,
       amount: Number(amount),
+      currency: currency ?? group.currency,
       description,
       splitType: splitType || 'equal',
       splits: splits.map((s) => {
@@ -117,12 +121,29 @@ expensesRoutes.post(
           userId: s.userId,
           userName: member?.name ?? 'Unknown',
           amount: s.amount ?? amount / splits.length,
+          percentage: s.percentage,
         }
       }),
+      category,
       createdAt: now,
     })
 
-    return c.json({ success: true, data: expense }, 201)
+    return c.json({
+      success: true,
+      data: {
+        id: expense.id,
+        groupId: expense.groupId,
+        payerId: expense.payerId,
+        payerName: expense.payerName,
+        amount: expense.amount,
+        currency: expense.currency,
+        description: expense.description,
+        splitType: expense.splitType,
+        splits: expense.splits,
+        category: expense.category,
+        createdAt: expense.createdAt,
+      },
+    }, 201)
   }
 )
 
@@ -154,7 +175,22 @@ expensesRoutes.get(
       throw new HTTPException(403, { message: 'You are not a member of this group' })
     }
 
-    return c.json({ success: true, data: expense })
+    return c.json({
+      success: true,
+      data: {
+        id: expense.id,
+        groupId: expense.groupId,
+        payerId: expense.payerId,
+        payerName: expense.payerName,
+        amount: expense.amount,
+        currency: expense.currency,
+        description: expense.description,
+        splitType: expense.splitType,
+        splits: expense.splits,
+        category: expense.category,
+        createdAt: expense.createdAt,
+      },
+    })
   }
 )
 
@@ -184,7 +220,8 @@ expensesRoutes.delete(
       throw new HTTPException(403, { message: 'Only the payer can delete this expense' })
     }
 
-    await deleteExpense(groupId, expense.createdAt)
+    // Delete expense and all participant records
+    await deleteExpense(groupId, expenseId, expense.createdAt)
 
     return c.json({ success: true, message: 'Expense deleted' })
   }

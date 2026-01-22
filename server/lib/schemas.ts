@@ -7,7 +7,7 @@ import { z } from 'zod'
 /**
  * Safe amount validator - prevents overflow and ensures reasonable bounds
  */
-const safeAmount = z
+export const safeAmount = z
   .number()
   .positive('Amount must be positive')
   .max(Number.MAX_SAFE_INTEGER, 'Amount too large')
@@ -116,6 +116,33 @@ export const updateWalletSchema = z.object({
 // Expense Schemas
 // ============================================
 
+/**
+ * Currency code validator
+ */
+const currencyCode = z
+  .string()
+  .min(2, 'Currency code too short')
+  .max(5, 'Currency code too long')
+  .toUpperCase()
+
+/**
+ * Expense category validator
+ */
+const expenseCategory = z
+  .enum([
+    'food',
+    'transport',
+    'entertainment',
+    'shopping',
+    'utilities',
+    'rent',
+    'travel',
+    'health',
+    'education',
+    'other',
+  ])
+  .optional()
+
 export const splitSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   amount: safeAmount.optional(),
@@ -132,6 +159,8 @@ export const createExpenseSchema = z.object({
     .trim(),
   splitType: z.enum(['equal', 'exact', 'percentage']).default('equal'),
   splits: z.array(splitSchema).min(1, 'At least one split required').max(50, 'Too many splits'),
+  currency: currencyCode.optional(),
+  category: expenseCategory,
 })
 
 // ============================================

@@ -28,17 +28,27 @@ groupsRoutes.use('*', authMiddleware)
 // GET /api/groups - List groups for current user
 groupsRoutes.get('/', requireAuth, async (c) => {
   const telegramUser = c.get('telegramUser') || getDevUser()
-  const groups = await getGroupsByUser(telegramUser.id)
+  const memberships = await getGroupsByUser(telegramUser.id)
+
+  // Extract group IDs from memberships and fetch full group details
+  const groupIds = memberships
+    .map((m) => m.GSI1SK?.replace('GROUP#', ''))
+    .filter(Boolean) as string[]
+
+  const groups = await Promise.all(groupIds.map((id) => getGroup(id)))
 
   return c.json({
     success: true,
-    data: groups.map((g) => ({
-      id: g.id,
-      chatId: g.chatId,
-      title: g.title,
-      createdAt: g.createdAt,
-      memberCount: g.memberCount,
-    })),
+    data: groups
+      .filter(Boolean)
+      .map((g) => ({
+        id: g!.id,
+        chatId: g!.chatId,
+        title: g!.title,
+        currency: g!.currency,
+        createdAt: g!.createdAt,
+        memberCount: g!.memberCount,
+      })),
   })
 })
 
