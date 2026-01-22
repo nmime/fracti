@@ -173,6 +173,7 @@ export interface User {
   name: string
   username?: string
   wallet?: string
+  avatarUrl?: string
 }
 
 export interface Expense {

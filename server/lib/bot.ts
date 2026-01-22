@@ -1,10 +1,11 @@
 import { Bot, Context, InlineKeyboard, webhookCallback } from 'grammy'
-import type { Chat } from 'grammy/types'
+import type { Chat, User } from 'grammy/types'
 import { randomUUID } from 'crypto'
 import {
   getGroup,
   createGroup,
   upsertUser,
+  getUser,
   createExpense,
   getGroupMembers,
 } from './dynamodb'
@@ -14,7 +15,8 @@ import {
   PARSER_SYSTEM_PROMPT,
   VISION_SYSTEM_PROMPT,
 } from './bedrock'
-import { downloadFile } from './telegram'
+import { downloadFile, downloadUserProfilePhoto } from './telegram'
+import { uploadAvatar } from './s3'
 import { createTranslator, getLocaleFromLanguageCode } from './i18n'
 import { config } from './config'
 import { logger } from './logger'
@@ -48,6 +50,45 @@ export const bot = new Bot(BOT_TOKEN)
 function getT(ctx: Context) {
   const locale = getLocaleFromLanguageCode(ctx.from?.language_code)
   return createTranslator(locale)
+}
+
+/**
+ * Register or update a user in the group, fetching their avatar if needed
+ */
+async function registerUserWithAvatar(
+  groupId: string,
+  user: User
+): Promise<void> {
+  const telegramId = user.id
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ')
+
+  // Check if user already exists and has an avatar
+  const existingUser = await getUser(groupId, telegramId)
+
+  let avatarUrl = existingUser?.avatarUrl
+
+  // Fetch avatar if user doesn't have one yet
+  if (!avatarUrl) {
+    try {
+      const photo = await downloadUserProfilePhoto(telegramId)
+      if (photo) {
+        avatarUrl = await uploadAvatar(telegramId, photo.buffer, photo.mimeType)
+        logger.info('Uploaded user avatar', { telegramId, avatarUrl })
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch/upload avatar', { telegramId }, error)
+      // Continue without avatar - not critical
+    }
+  }
+
+  // Upsert user with avatar
+  await upsertUser(groupId, {
+    id: String(telegramId),
+    telegramId,
+    name,
+    username: user.username,
+    avatarUrl,
+  })
 }
 
 // Command handlers
@@ -172,7 +213,7 @@ bot.on('message:text', async (ctx) => {
 
   const groupId = String(chatId)
 
-  // Always ensure group exists and register user (capture ALL users)
+  // Always ensure group exists
   let group = await getGroup(groupId)
   if (!group) {
     group = await createGroup({
@@ -184,13 +225,8 @@ bot.on('message:text', async (ctx) => {
     })
   }
 
-  // Register user from every message
-  await upsertUser(groupId, {
-    id: String(user.id),
-    telegramId: user.id,
-    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
-    username: user.username,
-  })
+  // Register user with avatar from every message (capture ALL users)
+  await registerUserWithAvatar(groupId, user)
 
   // Only process expense via AI when bot is @mentioned
   const botUsername = ctx.me.username.toLowerCase()
@@ -212,7 +248,7 @@ bot.on('message:photo', async (ctx) => {
 
   const groupId = String(chatId)
 
-  // Always ensure group exists and register user (capture ALL users)
+  // Always ensure group exists
   let group = await getGroup(groupId)
   if (!group) {
     group = await createGroup({
@@ -224,13 +260,8 @@ bot.on('message:photo', async (ctx) => {
     })
   }
 
-  // Register user from every message
-  await upsertUser(groupId, {
-    id: String(user.id),
-    telegramId: user.id,
-    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
-    username: user.username,
-  })
+  // Register user with avatar from every message (capture ALL users)
+  await registerUserWithAvatar(groupId, user)
 
   await handlePhotoMessage(ctx)
 })

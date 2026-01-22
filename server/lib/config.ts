@@ -21,6 +21,11 @@ const envSchema = z.object({
     .string()
     .min(1, 'TABLE_NAME is required'),
 
+  // S3 for avatars
+  S3_BUCKET_NAME: z
+    .string()
+    .min(1, 'S3_BUCKET_NAME is required'),
+
   // Telegram
   TELEGRAM_BOT_TOKEN: z
     .string()

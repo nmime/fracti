@@ -11,6 +11,7 @@ import {
   upsertUser,
   getGroupMembers,
 } from '../lib/dynamodb'
+import { transformAvatarUrl } from '../lib/s3'
 import { authMiddleware, requireAuth, getDevUser } from '../middleware/auth'
 import {
   groupIdParamSchema,
@@ -66,6 +67,7 @@ groupsRoutes.get(
           name: m.name,
           username: m.username,
           wallet: m.wallet,
+          avatarUrl: transformAvatarUrl(m.avatarUrl),
         })),
       },
     })

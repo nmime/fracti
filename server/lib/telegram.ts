@@ -203,3 +203,58 @@ export async function downloadFile(fileId: string): Promise<Buffer | null> {
     return null
   }
 }
+
+/**
+ * Get user profile photos from Telegram
+ * Returns the file_id of the most recent profile photo
+ */
+export async function getUserProfilePhoto(userId: number): Promise<string | null> {
+  if (!BOT_TOKEN) return null
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${BOT_TOKEN}/getUserProfilePhotos`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          limit: 1, // Only get the most recent photo
+        }),
+      }
+    )
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    if (!data.ok || !data.result?.photos?.length) return null
+
+    // Get the largest size of the first photo
+    const photo = data.result.photos[0]
+    if (!photo?.length) return null
+
+    // Photos are sorted by size, last one is largest
+    const largestPhoto = photo[photo.length - 1]
+    return largestPhoto?.file_id ?? null
+  } catch (error) {
+    logger.error('Failed to get user profile photos', { userId }, error)
+    return null
+  }
+}
+
+/**
+ * Download user's profile photo as Buffer
+ * Returns the image buffer and mime type
+ */
+export async function downloadUserProfilePhoto(
+  userId: number
+): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  const fileId = await getUserProfilePhoto(userId)
+  if (!fileId) return null
+
+  const buffer = await downloadFile(fileId)
+  if (!buffer) return null
+
+  // Telegram profile photos are always JPEG
+  return { buffer, mimeType: 'image/jpeg' }
+}
