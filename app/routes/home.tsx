@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
-import { type DebtGraph as DebtGraphType, type Group } from '@/lib/api'
+import { type DebtGraph as DebtGraphType, type Group, api } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 import { demoDebtGraph, demoGroup, demoRecentActivity } from '@/lib/fixtures'
@@ -17,9 +17,10 @@ export default function HomePage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
   const navigate = useNavigate()
-  const [debtGraph] = useState<DebtGraphType>(demoDebtGraph) // TODO: Use setDebtGraph when fetching from API
+  const [debtGraph, setDebtGraph] = useState<DebtGraphType>(demoDebtGraph)
   const [group] = useState<Group>(demoGroup)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const userNode = debtGraph.nodes.find((n) => n.name === 'You')
   const userBalance = userNode?.balance ?? 0
@@ -30,14 +31,21 @@ export default function HomePage() {
 
     const loadData = async () => {
       setIsLoading(true)
+      setError(null)
       try {
-        // In production, fetch from API with abort signal
-        // const data = await api.getDebts(group.id, { signal: abortController.signal })
-        // setDebtGraph(data)
-      } catch (error) {
+        // Fetch debt graph from API
+        const data = await api.getDebts(group.id)
+        if (!abortController.signal.aborted) {
+          setDebtGraph(data.graph)
+        }
+      } catch (err) {
         // Ignore abort errors
-        if (error instanceof Error && error.name === 'AbortError') return
-        logger.error('Failed to load debt graph', { groupId: group.id }, error)
+        if (err instanceof Error && err.name === 'AbortError') return
+        logger.error('Failed to load debt graph', { groupId: group.id }, err)
+        // Keep demo data on error, just log it
+        if (!abortController.signal.aborted) {
+          setError('Failed to load data')
+        }
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false)

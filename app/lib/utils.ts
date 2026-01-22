@@ -18,7 +18,12 @@ export function shortenAddress(address: string, chars = 4): string {
 }
 
 export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  // Use crypto.randomUUID for cryptographically secure IDs
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback for older environments
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
 export function debounce<T extends (...args: unknown[]) => unknown>(

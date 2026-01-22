@@ -54,5 +54,9 @@ export const getCurrentLanguage = () => i18n.language || 'en'
 // Helper to change language
 export const changeLanguage = (lang: 'en' | 'ru') => {
   i18n.changeLanguage(lang)
-  localStorage.setItem('fracti-lang', lang)
+  try {
+    localStorage.setItem('fracti-lang', lang)
+  } catch {
+    // localStorage may be unavailable in private browsing mode
+  }
 }

@@ -13,6 +13,8 @@ interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
   headers?: Record<string, string>
+  signal?: AbortSignal
+  timeout?: number
 }
 
 class ApiClient {
@@ -28,25 +30,42 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
-    const { method = 'GET', body, headers = {} } = options
+    const { method = 'GET', body, headers = {}, signal, timeout = 30000 } = options
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': this.initData,
-        ...headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
+    // Create timeout abort controller if no signal provided
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    const json = await response.json() as ApiResponse<T>
+    // Use provided signal or our timeout controller
+    const fetchSignal = signal || controller.signal
 
-    if (!response.ok || !json.success) {
-      throw new Error(json.message || json.error || `HTTP ${response.status}`)
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': this.initData,
+          ...headers,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: fetchSignal,
+      })
+
+      const json = await response.json() as ApiResponse<T>
+
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || json.error || `HTTP ${response.status}`)
+      }
+
+      return json.data
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out')
+      }
+      throw error
+    } finally {
+      clearTimeout(timeoutId)
     }
-
-    return json.data
   }
 
   // Groups

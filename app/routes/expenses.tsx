@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
-import { type Expense, type User, type CreateExpenseInput } from '@/lib/api'
+import { type Expense, type User, type CreateExpenseInput, api } from '@/lib/api'
 import { demoMembers, createDemoExpenses } from '@/lib/fixtures'
+import { logger } from '@/lib/logger'
 import { ExpenseCard } from '@/components/ExpenseCard'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
 import { Input } from '@/components/ui/input'
@@ -19,10 +20,37 @@ export default function ExpensesPage() {
   const [members] = useState<User[]>(demoMembers)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
-  const [isLoading] = useState(false) // TODO: Implement loading state when fetching from API
+  const [isLoading, setIsLoading] = useState(false)
 
   // Use Telegram user ID when available, fallback to demo user '1' for development
   const currentUserId = user?.id ? String(user.id) : '1'
+  const groupId = 'demo' // In production, get from route params or context
+
+  // Fetch expenses from API on mount
+  useEffect(() => {
+    const abortController = new AbortController()
+
+    const loadExpenses = async () => {
+      setIsLoading(true)
+      try {
+        const data = await api.getExpenses(groupId)
+        if (!abortController.signal.aborted) {
+          setExpenses(data)
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+        logger.error('Failed to load expenses', { groupId }, err)
+        // Keep demo data on error
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoading(false)
+        }
+      }
+    }
+    loadExpenses()
+
+    return () => abortController.abort()
+  }, [groupId])
 
   // Memoize filtered expenses to avoid recalculation on every render
   const filteredExpenses = useMemo(() => {
