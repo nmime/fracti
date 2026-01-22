@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
@@ -26,26 +26,36 @@ export default function HomePage() {
   const isOwed = userBalance > 0
 
   useEffect(() => {
+    const abortController = new AbortController()
+
     const loadData = async () => {
       setIsLoading(true)
       try {
-        // In production, fetch from API
-        // const data = await api.getDebts(group.id)
+        // In production, fetch from API with abort signal
+        // const data = await api.getDebts(group.id, { signal: abortController.signal })
         // setDebtGraph(data)
       } catch (error) {
+        // Ignore abort errors
+        if (error instanceof Error && error.name === 'AbortError') return
         logger.error('Failed to load debt graph', { groupId: group.id }, error)
       } finally {
-        setIsLoading(false)
+        if (!abortController.signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }
     loadData()
+
+    // Cleanup: abort pending requests on unmount
+    return () => abortController.abort()
   }, [group.id])
 
-  const formatTimeAgo = (hours: number) => {
+  const formatTimeAgo = useCallback((hours: number) => {
     if (hours < 1) return t('home.justNow')
     if (hours < 24) return t('home.hoursAgo', { count: Math.floor(hours) })
-    return t('home.hoursAgo', { count: Math.floor(hours) })
-  }
+    const days = Math.floor(hours / 24)
+    return t('home.daysAgo', { count: days })
+  }, [t])
 
   return (
     <div className="space-y-6 p-4 pb-20">

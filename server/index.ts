@@ -51,6 +51,8 @@ app.use(
         formAction: ["'self'"],
         frameAncestors: ["'self'", 'https://web.telegram.org'],
       },
+      // HSTS: enforce HTTPS for 1 year, include subdomains
+      strictTransportSecurity: 'max-age=31536000; includeSubDomains',
     }),
     xContentTypeOptions: 'nosniff',
     xFrameOptions: 'SAMEORIGIN', // Allow Telegram iframe

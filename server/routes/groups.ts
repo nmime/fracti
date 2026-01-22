@@ -44,6 +44,7 @@ groupsRoutes.get('/', requireAuth, async (c) => {
 // GET /api/groups/:groupId - Get single group with members
 groupsRoutes.get(
   '/:groupId',
+  requireAuth,
   zValidator('param', groupIdParamSchema),
   async (c) => {
     const { groupId } = c.req.valid('param')

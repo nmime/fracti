@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
@@ -25,16 +25,26 @@ export default function SettlePage() {
   // Use Telegram user ID when available, fallback to demo user '1' for development
   const currentUserId = user?.id ? String(user.id) : '1'
 
-  const pendingSettlements = settlements.filter((s) => s.status === 'pending')
-  const completedSettlements = settlements.filter((s) => s.status === 'completed')
+  // Memoize settlement calculations to avoid recalculation on every render
+  const { pendingSettlements, completedSettlements, totalOwed, totalToReceive } = useMemo(() => {
+    const pending = settlements.filter((s) => s.status === 'pending')
+    const completed = settlements.filter((s) => s.status === 'completed')
 
-  const totalOwed = pendingSettlements
-    .filter((s) => s.fromUserId === currentUserId)
-    .reduce((sum, s) => sum + s.amount, 0)
+    const owed = pending
+      .filter((s) => s.fromUserId === currentUserId)
+      .reduce((sum, s) => sum + s.amount, 0)
 
-  const totalToReceive = pendingSettlements
-    .filter((s) => s.toUserId === currentUserId)
-    .reduce((sum, s) => sum + s.amount, 0)
+    const toReceive = pending
+      .filter((s) => s.toUserId === currentUserId)
+      .reduce((sum, s) => sum + s.amount, 0)
+
+    return {
+      pendingSettlements: pending,
+      completedSettlements: completed,
+      totalOwed: owed,
+      totalToReceive: toReceive,
+    }
+  }, [settlements, currentUserId])
 
   const handlePay = async (settlement: Settlement) => {
     if (!isConnected) {

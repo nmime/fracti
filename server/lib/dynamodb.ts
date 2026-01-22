@@ -83,6 +83,8 @@ export interface ExpenseRecord {
     percentage?: number
   }>
   createdAt: string
+  GSI2PK?: string
+  GSI2SK?: string
 }
 
 export interface SettlementRecord {
@@ -98,6 +100,8 @@ export interface SettlementRecord {
   txHash?: string
   status: 'pending' | 'completed' | 'failed'
   createdAt: string
+  GSI2PK?: string
+  GSI2SK?: string
 }
 
 // Pagination types
@@ -251,11 +255,14 @@ export async function getAllExpenses(groupId: string): Promise<ExpenseRecord[]> 
 }
 
 export async function createExpense(
-  expense: Omit<ExpenseRecord, 'PK' | 'SK'>
+  expense: Omit<ExpenseRecord, 'PK' | 'SK' | 'GSI2PK' | 'GSI2SK'>
 ): Promise<ExpenseRecord> {
   const item: ExpenseRecord = {
     ...keys.expense(expense.groupId, expense.createdAt),
     ...expense,
+    // GSI2 for efficient lookup by expense ID
+    GSI2PK: `EXPENSE#${expense.id}`,
+    GSI2SK: expense.groupId,
   }
   await docClient.send(
     new PutCommand({
@@ -264,6 +271,24 @@ export async function createExpense(
     })
   )
   return item
+}
+
+/**
+ * Get a single expense by ID using GSI2 (O(1) lookup)
+ */
+export async function getExpenseById(expenseId: string): Promise<ExpenseRecord | null> {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI2',
+      KeyConditionExpression: 'GSI2PK = :pk',
+      ExpressionAttributeValues: {
+        ':pk': `EXPENSE#${expenseId}`,
+      },
+      Limit: 1,
+    })
+  )
+  return (result.Items?.[0] as ExpenseRecord) ?? null
 }
 
 export async function deleteExpense(
@@ -310,11 +335,14 @@ export async function getAllSettlements(groupId: string): Promise<SettlementReco
 }
 
 export async function createSettlement(
-  settlement: Omit<SettlementRecord, 'PK' | 'SK'>
+  settlement: Omit<SettlementRecord, 'PK' | 'SK' | 'GSI2PK' | 'GSI2SK'>
 ): Promise<SettlementRecord> {
   const item: SettlementRecord = {
     ...keys.settlement(settlement.groupId, settlement.createdAt),
     ...settlement,
+    // GSI2 for efficient lookup by settlement ID
+    GSI2PK: `SETTLEMENT#${settlement.id}`,
+    GSI2SK: settlement.groupId,
   }
   await docClient.send(
     new PutCommand({
@@ -323,6 +351,24 @@ export async function createSettlement(
     })
   )
   return item
+}
+
+/**
+ * Get a single settlement by ID using GSI2 (O(1) lookup)
+ */
+export async function getSettlementById(settlementId: string): Promise<SettlementRecord | null> {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI2',
+      KeyConditionExpression: 'GSI2PK = :pk',
+      ExpressionAttributeValues: {
+        ':pk': `SETTLEMENT#${settlementId}`,
+      },
+      Limit: 1,
+    })
+  )
+  return (result.Items?.[0] as SettlementRecord) ?? null
 }
 
 export async function updateSettlementStatus(

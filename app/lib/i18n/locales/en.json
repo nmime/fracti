@@ -21,6 +21,7 @@
     "recentActivity": "Recent Activity",
     "viewAll": "View All",
     "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
     "minutesAgo": "{{count}}m ago",
     "justNow": "Just now",
     "paid": "paid",

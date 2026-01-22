@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
@@ -24,25 +24,28 @@ export default function ExpensesPage() {
   // Use Telegram user ID when available, fallback to demo user '1' for development
   const currentUserId = user?.id ? String(user.id) : '1'
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesSearch = expense.description
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+  // Memoize filtered expenses to avoid recalculation on every render
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const matchesSearch = expense.description
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
 
-    if (!matchesSearch) return false
+      if (!matchesSearch) return false
 
-    switch (filter) {
-      case 'mine':
-        return expense.payerId === currentUserId
-      case 'owe':
-        return (
-          expense.payerId !== currentUserId &&
-          expense.splits.some((s) => s.userId === currentUserId)
-        )
-      default:
-        return true
-    }
-  })
+      switch (filter) {
+        case 'mine':
+          return expense.payerId === currentUserId
+        case 'owe':
+          return (
+            expense.payerId !== currentUserId &&
+            expense.splits.some((s) => s.userId === currentUserId)
+          )
+        default:
+          return true
+      }
+    })
+  }, [expenses, searchQuery, filter, currentUserId])
 
   const handleAddExpense = async (data: CreateExpenseInput) => {
     try {
