@@ -18,8 +18,10 @@ export default function HomePage() {
   const { user } = useTelegram()
   const navigate = useNavigate()
   const [debtGraph, setDebtGraph] = useState<DebtGraphType>(demoDebtGraph)
-  const [group] = useState<Group>(demoGroup)
   const [isLoading, setIsLoading] = useState(false)
+
+  // TODO: In production, get group from route params or context
+  const group = demoGroup
 
   const userNode = debtGraph.nodes.find((n) => n.name === 'You')
   const userBalance = userNode?.balance ?? 0

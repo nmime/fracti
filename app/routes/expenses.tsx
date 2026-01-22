@@ -17,8 +17,10 @@ export default function ExpensesPage() {
   const { user } = useTelegram()
   const { toast } = useToast()
   const [expenses, setExpenses] = useState<Expense[]>(() => createDemoExpenses())
-  const [members] = useState<User[]>(demoMembers)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // TODO: In production, fetch members from API
+  const members = demoMembers
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
   const [isLoading, setIsLoading] = useState(false)
 
