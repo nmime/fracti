@@ -1,5 +1,12 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
+interface ApiResponse<T> {
+  success: boolean
+  data: T
+  error?: string
+  message?: string
+}
+
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
@@ -31,17 +38,18 @@ class ApiClient {
       body: body ? JSON.stringify(body) : undefined,
     })
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }))
-      throw new Error(error.message || `HTTP ${response.status}`)
+    const json = await response.json() as ApiResponse<T>
+
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || json.error || `HTTP ${response.status}`)
     }
 
-    return response.json()
+    return json.data
   }
 
   // Groups
   async getGroup(groupId: string) {
-    return this.request<Group>(`/groups/${groupId}`)
+    return this.request<GroupWithMembers>(`/groups/${groupId}`)
   }
 
   async getGroups() {
@@ -50,6 +58,13 @@ class ApiClient {
 
   async createGroup(data: { title: string; chatId: string }) {
     return this.request<Group>('/groups', { method: 'POST', body: data })
+  }
+
+  async joinGroup(groupId: string, wallet?: string) {
+    return this.request<{ success: true }>(`/groups/${groupId}/join`, {
+      method: 'POST',
+      body: { wallet },
+    })
   }
 
   // Expenses
@@ -65,32 +80,34 @@ class ApiClient {
   }
 
   async deleteExpense(groupId: string, expenseId: string) {
-    return this.request<void>(`/groups/${groupId}/expenses/${expenseId}`, {
+    return this.request<{ success: true }>(`/groups/${groupId}/expenses/${expenseId}`, {
       method: 'DELETE',
     })
   }
 
   // AI Parsing
-  async parseMessage(message: string) {
-    return this.request<ParsedExpense>('/ai/parse', {
+  async parseText(text: string, context?: { members?: string[]; groupId?: string }) {
+    const response = await this.request<{ expense: ParsedExpense }>('/ai/parse', {
       method: 'POST',
-      body: { message },
+      body: { text, context },
     })
+    return response.expense
   }
 
-  async parseReceipt(imageBase64: string) {
-    return this.request<ParsedReceipt>('/ai/vision', {
+  async parseReceipt(imageBase64: string, mimeType = 'image/jpeg') {
+    const response = await this.request<{ receipt: ParsedReceipt }>('/ai/vision', {
       method: 'POST',
-      body: { image: imageBase64 },
+      body: { image: imageBase64, mimeType },
     })
+    return response.receipt
   }
 
-  // Settlements
+  // Debts & Settlements
   async getDebts(groupId: string) {
-    return this.request<DebtGraph>(`/groups/${groupId}/debts`)
+    return this.request<DebtData>(`/groups/${groupId}/debts`)
   }
 
-  async getOptimizedSettlements(groupId: string) {
+  async getSettlements(groupId: string) {
     return this.request<Settlement[]>(`/groups/${groupId}/settlements`)
   }
 
@@ -101,16 +118,19 @@ class ApiClient {
     })
   }
 
-  // Users
-  async updateUserWallet(groupId: string, wallet: string) {
-    return this.request<User>(`/groups/${groupId}/wallet`, {
+  async confirmSettlement(groupId: string, settlementId: string, txHash: string) {
+    return this.request<Settlement>(`/groups/${groupId}/settlements/${settlementId}`, {
       method: 'PUT',
-      body: { wallet },
+      body: { txHash, status: 'completed' },
     })
   }
 
-  async getGroupMembers(groupId: string) {
-    return this.request<User[]>(`/groups/${groupId}/members`)
+  // Users
+  async updateUserWallet(groupId: string, wallet: string) {
+    return this.request<{ wallet: string }>(`/groups/${groupId}/wallet`, {
+      method: 'PUT',
+      body: { wallet },
+    })
   }
 }
 
@@ -123,13 +143,15 @@ export interface Group {
   memberCount: number
 }
 
+export interface GroupWithMembers extends Group {
+  members: User[]
+}
+
 export interface User {
   id: string
-  telegramId: number
   name: string
   username?: string
   wallet?: string
-  avatarUrl?: string
 }
 
 export interface Expense {
@@ -155,26 +177,28 @@ export interface CreateExpenseInput {
   payerId: string
   amount: number
   description: string
-  splitType: 'equal' | 'exact' | 'percentage'
-  splits: { userId: string; amount?: number; percentage?: number }[]
+  splitType?: 'equal' | 'exact' | 'percentage'
+  splits: { userId: string; amount?: number }[]
 }
 
 export interface ParsedExpense {
-  payer?: string
+  payer: string | null
   amount: number
-  currency?: string
+  currency: string
   description: string
   beneficiaries: string[]
+  splitType: string
   confidence: number
 }
 
 export interface ParsedReceipt {
+  merchant: string | null
+  date: string | null
   items: ReceiptItem[]
+  subtotal: number
+  tax: number
   total: number
-  tax?: number
-  currency?: string
-  merchant?: string
-  date?: string
+  currency: string
   confidence: number
 }
 
@@ -182,6 +206,19 @@ export interface ReceiptItem {
   name: string
   quantity: number
   price: number
+}
+
+export interface DebtData {
+  graph: DebtGraph
+  suggestedSettlements: SuggestedSettlement[]
+  balances: DebtNode[]
+  summary: {
+    totalExpenses: number
+    totalSettled: number
+    expenseCount: number
+    settlementCount: number
+    pendingSettlements: number
+  }
 }
 
 export interface DebtGraph {
@@ -202,6 +239,14 @@ export interface DebtEdge {
   amount: number
 }
 
+export interface SuggestedSettlement {
+  fromUserId: string
+  fromUserName: string
+  toUserId: string
+  toUserName: string
+  amount: number
+}
+
 export interface Settlement {
   id: string
   groupId: string
@@ -216,10 +261,9 @@ export interface Settlement {
 }
 
 export interface RecordSettlementInput {
-  fromUserId: string
-  toUserId: string
+  toId: string
   amount: number
-  txHash: string
+  txHash?: string
 }
 
 export const api = new ApiClient(API_BASE)

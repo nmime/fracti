@@ -11,7 +11,7 @@ import {
   getGroup,
   getGroupMembers,
 } from '../lib/dynamodb'
-import { calculateDebts, optimizeSettlements } from '../lib/debt-graph'
+import { calculateBalances, optimizeSettlements, buildDebtGraph } from '../lib/debt-graph'
 import { authMiddleware, requireAuth, getDevUser } from '../middleware/auth'
 import {
   groupIdParamSchema,
@@ -43,67 +43,27 @@ settlementsRoutes.get(
       getGroupMembers(groupId),
     ])
 
-    // Build user map with wallet addresses
-    const userMap = new Map(
-      members.map((m) => [m.id, { id: m.id, name: m.name, wallet: m.wallet }])
-    )
+    // Calculate balances using the debt-graph library
+    const balances = calculateBalances(expenses, settlements, members)
 
-    // Calculate debts
-    const debts = calculateDebts(expenses, settlements)
+    // Build the debt graph
+    const debtGraph = buildDebtGraph(balances, members)
 
-    // Optimize settlements (min-cash-flow)
-    const optimizedDebts = optimizeSettlements(debts)
-
-    // Enrich with user info
-    const enrichedDebts = optimizedDebts.map((d) => ({
-      ...d,
-      fromName: userMap.get(d.from)?.name ?? 'Unknown',
-      fromWallet: userMap.get(d.from)?.wallet,
-      toName: userMap.get(d.to)?.name ?? 'Unknown',
-      toWallet: userMap.get(d.to)?.wallet,
-    }))
-
-    // Calculate balances per user
-    const balances = new Map<string, number>()
-    for (const member of members) {
-      balances.set(member.id, 0)
-    }
-
-    for (const expense of expenses) {
-      const current = balances.get(expense.payerId) ?? 0
-      balances.set(expense.payerId, current + expense.amount)
-
-      for (const split of expense.splits) {
-        const current = balances.get(split.userId) ?? 0
-        balances.set(split.userId, current - split.amount)
-      }
-    }
-
-    // Apply settlements
-    for (const settlement of settlements) {
-      const fromBalance = balances.get(settlement.fromId) ?? 0
-      const toBalance = balances.get(settlement.toId) ?? 0
-      balances.set(settlement.fromId, fromBalance + settlement.amount)
-      balances.set(settlement.toId, toBalance - settlement.amount)
-    }
-
-    const balanceList = members.map((m) => ({
-      userId: m.id,
-      userName: m.name,
-      wallet: m.wallet,
-      balance: balances.get(m.id) ?? 0,
-    }))
+    // Optimize settlements (min-cash-flow algorithm)
+    const optimizedSettlements = optimizeSettlements(balances, members)
 
     return c.json({
       success: true,
       data: {
-        debts: enrichedDebts,
-        balances: balanceList,
+        graph: debtGraph,
+        suggestedSettlements: optimizedSettlements,
+        balances: debtGraph.nodes,
         summary: {
           totalExpenses: expenses.reduce((sum, e) => sum + e.amount, 0),
-          totalSettled: settlements.reduce((sum, s) => sum + s.amount, 0),
+          totalSettled: settlements.filter(s => s.status === 'completed').reduce((sum, s) => sum + s.amount, 0),
           expenseCount: expenses.length,
           settlementCount: settlements.length,
+          pendingSettlements: settlements.filter(s => s.status === 'pending').length,
         },
       },
     })
@@ -134,10 +94,10 @@ settlementsRoutes.get(
       data: settlements.map((s) => ({
         id: s.id,
         groupId: s.groupId,
-        fromId: s.fromId,
-        fromName: userMap.get(s.fromId) ?? 'Unknown',
-        toId: s.toId,
-        toName: userMap.get(s.toId) ?? 'Unknown',
+        fromUserId: s.fromUserId,
+        fromUserName: s.fromUserName,
+        toUserId: s.toUserId,
+        toUserName: s.toUserName,
         amount: s.amount,
         txHash: s.txHash,
         status: s.status,
@@ -164,8 +124,8 @@ settlementsRoutes.post(
     }
 
     const members = await getGroupMembers(groupId)
-    const fromId = String(telegramUser.id)
-    const fromMember = members.find((m) => m.id === fromId)
+    const fromUserId = String(telegramUser.id)
+    const fromMember = members.find((m) => m.id === fromUserId)
     const toMember = members.find((m) => m.id === toId)
 
     if (!fromMember) {
@@ -182,13 +142,13 @@ settlementsRoutes.post(
     const settlement = await createSettlement({
       id,
       groupId,
-      fromId,
-      fromName: fromMember.name,
-      toId,
-      toName: toMember.name,
+      fromUserId,
+      fromUserName: fromMember.name,
+      toUserId: toId,
+      toUserName: toMember.name,
       amount: Number(amount),
-      txHash: txHash || null,
-      status: txHash ? 'confirmed' : 'pending',
+      txHash: txHash || undefined,
+      status: txHash ? 'completed' : 'pending',
       createdAt: now,
     })
 
@@ -218,7 +178,7 @@ settlementsRoutes.put(
       throw new HTTPException(404, { message: 'Settlement not found' })
     }
 
-    // TODO: Actually update in DynamoDB
+    // TODO: Actually update in DynamoDB using updateSettlementStatus
     return c.json({
       success: true,
       data: {
