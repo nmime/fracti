@@ -266,3 +266,194 @@ export async function verifyTonTransaction(
 export async function getTransactionDetails(txHash: string): Promise<TonTransaction | null> {
   return fetchTransaction(txHash)
 }
+
+// ============================================
+// Jetton (USDT) Support
+// ============================================
+
+/**
+ * Known Jetton master addresses on TON mainnet
+ */
+export const JETTON_MASTERS = {
+  USDT: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs', // Tether USDT on TON
+  USDC: 'EQB-MPwrd1G6WKNkLz_VnV6WqBDd142KMQv-g1O-8QUA3728', // USDC on TON
+} as const
+
+export type JettonType = keyof typeof JETTON_MASTERS
+
+/**
+ * Jetton transfer event structure
+ */
+export interface JettonTransfer {
+  queryId: string
+  source: string
+  destination: string
+  amount: string
+  jettonMaster: string
+  responseDestination?: string
+  forwardPayload?: string
+}
+
+/**
+ * Fetch Jetton transfers for an account from toncenter
+ */
+async function fetchJettonTransfers(
+  accountAddress: string,
+  limit: number = 10
+): Promise<JettonTransfer[]> {
+  const apiUrl = config.TONCENTER_API_URL
+  const apiKey = config.TONCENTER_API_KEY
+
+  const url = new URL(`${apiUrl}/jetton/transfers`)
+  url.searchParams.set('address', accountAddress)
+  url.searchParams.set('limit', String(limit))
+
+  const headers: Record<string, string> = { 'Accept': 'application/json' }
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey
+  }
+
+  try {
+    const response = await fetch(url.toString(), { headers })
+
+    if (!response.ok) {
+      logger.error('TON Center Jetton API error', {
+        status: response.status,
+        accountAddress,
+      })
+      return []
+    }
+
+    const data = await response.json()
+    return data.jetton_transfers ?? []
+  } catch (error) {
+    logger.error('Failed to fetch Jetton transfers', { accountAddress }, error as Error)
+    return []
+  }
+}
+
+/**
+ * Verify a Jetton (USDT/USDC) transfer
+ *
+ * @param txHash - Transaction hash
+ * @param expectedTo - Expected recipient wallet address
+ * @param expectedAmount - Expected amount (in Jetton units, e.g., USDT has 6 decimals)
+ * @param jettonType - Type of Jetton (USDT, USDC)
+ */
+export async function verifyJettonTransfer(
+  txHash: string,
+  expectedTo: string,
+  expectedAmount: number,
+  jettonType: JettonType = 'USDT'
+): Promise<VerificationResult> {
+  // Skip verification in dev mode
+  if (config.SKIP_TON_VERIFICATION || (isLocalDev && !config.TONCENTER_API_KEY)) {
+    logger.warn('Skipping Jetton verification (dev mode)', { txHash, jettonType })
+    return {
+      verified: true,
+      details: {
+        from: 'dev-mode',
+        to: expectedTo,
+        amount: expectedAmount,
+        timestamp: Date.now(),
+      },
+    }
+  }
+
+  const jettonMaster = JETTON_MASTERS[jettonType]
+  if (!jettonMaster) {
+    return {
+      verified: false,
+      error: `Unknown Jetton type: ${jettonType}`,
+    }
+  }
+
+  // First, get the transaction to find the account
+  const tx = await fetchTransaction(txHash)
+  if (!tx) {
+    return {
+      verified: false,
+      error: 'Transaction not found on TON blockchain',
+    }
+  }
+
+  if (!tx.success) {
+    return {
+      verified: false,
+      error: `Transaction failed on-chain. Status: ${tx.end_status}`,
+    }
+  }
+
+  // Fetch Jetton transfers for the destination account
+  const transfers = await fetchJettonTransfers(expectedTo)
+
+  // Find matching transfer
+  const matchingTransfer = transfers.find((transfer) => {
+    // Check Jetton master matches
+    if (!addressesMatch(transfer.jettonMaster, jettonMaster)) {
+      return false
+    }
+
+    // Check destination matches
+    if (!addressesMatch(transfer.destination, expectedTo)) {
+      return false
+    }
+
+    // Check amount (Jetton amounts need decimal adjustment)
+    // USDT has 6 decimals, so 1 USDT = 1000000
+    const decimals = jettonType === 'USDT' ? 6 : 6 // Most stablecoins use 6 decimals
+    const actualAmount = Number(transfer.amount) / Math.pow(10, decimals)
+    const tolerance = 0.01
+
+    if (actualAmount < expectedAmount - tolerance) {
+      return false
+    }
+
+    return true
+  })
+
+  if (!matchingTransfer) {
+    return {
+      verified: false,
+      error: `No matching ${jettonType} transfer found to ${expectedTo} for ${expectedAmount}`,
+    }
+  }
+
+  const decimals = 6
+  const actualAmount = Number(matchingTransfer.amount) / Math.pow(10, decimals)
+
+  logger.info('Jetton transfer verified successfully', {
+    txHash,
+    jettonType,
+    from: matchingTransfer.source,
+    to: matchingTransfer.destination,
+    amount: actualAmount,
+  })
+
+  return {
+    verified: true,
+    details: {
+      from: matchingTransfer.source,
+      to: matchingTransfer.destination,
+      amount: actualAmount,
+      timestamp: tx.now * 1000,
+    },
+  }
+}
+
+/**
+ * Verify any supported token transfer (TON or Jetton)
+ */
+export async function verifyTokenTransfer(
+  txHash: string,
+  expectedTo: string,
+  expectedAmount: number,
+  tokenType: 'TON' | JettonType = 'TON',
+  expectedComment?: string
+): Promise<VerificationResult> {
+  if (tokenType === 'TON') {
+    return verifyTonTransaction(txHash, expectedTo, expectedAmount, expectedComment)
+  }
+
+  return verifyJettonTransfer(txHash, expectedTo, expectedAmount, tokenType)
+}

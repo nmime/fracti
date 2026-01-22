@@ -445,5 +445,112 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
   }
 }
 
+// ============================================
+// Inline Mode Support
+// ============================================
+
+/**
+ * Handle inline queries for quick expense sharing
+ * Users can type @BotName <amount> <description> in any chat
+ */
+bot.on('inline_query', async (ctx) => {
+  const query = ctx.inlineQuery.query.trim()
+  const userId = ctx.from.id
+
+  // Parse query: "50 dinner" or "100.50 groceries"
+  const match = query.match(/^(\d+(?:\.\d+)?)\s*(.*)$/)
+
+  const results = []
+
+  if (match) {
+    const amount = parseFloat(match[1])
+    const description = match[2] || 'Expense'
+
+    // Get user's groups for suggestions
+    const memberships = await getGroupsByUser(userId)
+
+    if (memberships.length > 0) {
+      // Add a result for each group
+      for (const membership of memberships.slice(0, 10)) {
+        const groupId = membership.GSI1SK?.replace('GROUP#', '') || ''
+        const group = await getGroup(groupId)
+        if (!group) continue
+
+        results.push({
+          type: 'article' as const,
+          id: `expense-${groupId}-${Date.now()}`,
+          title: `💸 ${amount} - ${description}`,
+          description: `Add to ${group.title}`,
+          thumbnail_url: 'https://i.imgur.com/YourIcon.png', // Replace with actual icon
+          input_message_content: {
+            message_text: `💸 <b>New Expense</b>\n\n` +
+              `Amount: <b>${amount} ${group.currency ?? 'TON'}</b>\n` +
+              `Description: ${description}\n` +
+              `Group: ${group.title}\n\n` +
+              `<i>Open the app to confirm and split this expense</i>`,
+            parse_mode: 'HTML' as const,
+          },
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '✅ Add Expense', web_app: { url: `${MINI_APP_URL}?group=${groupId}&amount=${amount}&desc=${encodeURIComponent(description)}` } }
+            ]]
+          },
+        })
+      }
+    }
+
+    // Always add a "create new" option
+    results.push({
+      type: 'article' as const,
+      id: `expense-new-${Date.now()}`,
+      title: `💸 ${amount} - ${description}`,
+      description: 'Share expense details',
+      input_message_content: {
+        message_text: `💸 <b>Expense to Split</b>\n\n` +
+          `Amount: <b>${amount}</b>\n` +
+          `Description: ${description}\n\n` +
+          `<i>Add me to a group to track shared expenses!</i>`,
+        parse_mode: 'HTML' as const,
+      },
+    })
+  } else if (query.length === 0) {
+    // Show help when query is empty
+    results.push({
+      type: 'article' as const,
+      id: 'help',
+      title: '💡 How to use inline mode',
+      description: 'Type: amount description (e.g., "50 dinner")',
+      input_message_content: {
+        message_text: `💡 <b>Fracti Inline Mode</b>\n\n` +
+          `Type: <code>@${ctx.me.username} 50 dinner</code>\n\n` +
+          `This lets you quickly share expenses in any chat!`,
+        parse_mode: 'HTML' as const,
+      },
+    })
+  }
+
+  await ctx.answerInlineQuery(results, {
+    cache_time: 10,
+    is_personal: true,
+  })
+})
+
+/**
+ * Handle chosen inline result (when user selects a result)
+ */
+bot.on('chosen_inline_result', async (ctx) => {
+  const resultId = ctx.chosenInlineResult.result_id
+  const userId = ctx.from.id
+
+  logger.info('Inline result chosen', {
+    userId,
+    resultId,
+    query: ctx.chosenInlineResult.query,
+  })
+})
+
+// Import for inline mode
+import { getGroupsByUser } from './dynamodb'
+
 // Create webhook handler
 export const handleUpdate = webhookCallback(bot, 'std/http')

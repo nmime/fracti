@@ -17,6 +17,8 @@ import { groupsRoutes } from './routes/groups'
 import { expensesRoutes } from './routes/expenses'
 import { settlementsRoutes } from './routes/settlements'
 import { usersRoutes } from './routes/users'
+import { analyticsRoutes } from './routes/analytics'
+import { recurringRoutes } from './routes/recurring'
 import { aiRoutes } from './routes/ai'
 import { webhooksRoutes } from './routes/webhooks'
 
@@ -115,6 +117,12 @@ app.route('/api/groups', expensesRoutes)
 
 // Settlements API (nested under groups) - already covered by /api/groups/*
 app.route('/api/groups', settlementsRoutes)
+
+// Analytics API (nested under groups) - already covered by /api/groups/*
+app.route('/api/groups', analyticsRoutes)
+
+// Recurring templates API (nested under groups) - already covered by /api/groups/*
+app.route('/api/groups', recurringRoutes)
 
 // Users API - user-centric queries (personal expenses, debts, settlements)
 app.use('/api/users/*', standardRateLimit)

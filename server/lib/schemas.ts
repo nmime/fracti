@@ -7,7 +7,7 @@ import { z } from 'zod'
 /**
  * Safe amount validator - prevents overflow and ensures reasonable bounds
  */
-const safeAmount = z
+export const safeAmount = z
   .number()
   .positive('Amount must be positive')
   .max(Number.MAX_SAFE_INTEGER, 'Amount too large')
