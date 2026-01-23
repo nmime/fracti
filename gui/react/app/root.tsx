@@ -7,10 +7,10 @@ import {
   ScrollRestoration,
 } from "react-router"
 import type { Route } from "./+types/root"
-import { SDKProvider } from "@tma.js/sdk-react"
 import { TonConnectUIProvider } from "@tonconnect/ui-react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ErrorBoundary } from "react-error-boundary"
+import { TelegramProvider } from "@/lib/telegram"
 import "./styles/tailwind.css"
 
 // Create QueryClient instance
@@ -61,13 +61,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <SDKProvider acceptCustomStyles>
+    <TelegramProvider>
       <TonConnectUIProvider manifestUrl={manifestUrl}>
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>
       </TonConnectUIProvider>
-    </SDKProvider>
+    </TelegramProvider>
   )
 }
 

@@ -1,15 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
-import {
-  SDKProvider,
-  useInitData,
-  useLaunchParams,
-  useMiniApp,
-  useThemeParams,
-  useViewport,
-  useBackButton,
-  useMainButton,
-  useHapticFeedback,
-} from '@tma.js/sdk-react'
+import WebApp from '@twa-dev/sdk'
 import type { TelegramUser, TelegramTheme, DeepLinkParams } from '@core/types'
 
 // Demo user for development outside Telegram
@@ -65,6 +55,7 @@ interface TelegramContextValue {
   }
   expand: () => void
   close: () => void
+  showQRScanner: (params?: { text?: string }) => Promise<string | null>
 }
 
 const TelegramContext = createContext<TelegramContextValue | null>(null)
@@ -85,64 +76,57 @@ function parseDeepLink(startParam: string | null): DeepLinkParams {
   }
 }
 
-function TelegramProviderInner({ children }: { children: React.ReactNode }) {
+export function TelegramProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false)
-  const initData = useInitData()
-  const launchParams = useLaunchParams()
-  const miniApp = useMiniApp()
-  const themeParams = useThemeParams()
-  const viewport = useViewport()
-  const backButton = useBackButton()
-  const mainButton = useMainButton()
-  const hapticFeedback = useHapticFeedback()
 
-  const isTelegram = typeof window !== 'undefined' && !!initData
+  const isTelegram = typeof window !== 'undefined' && !!WebApp.initData
 
   // Extract user from init data
   const user = useMemo<TelegramUser | null>(() => {
-    if (!initData?.user) return isTelegram ? null : demoUser
+    if (!isTelegram) return demoUser
 
-    const u = initData.user
+    const u = WebApp.initDataUnsafe?.user
+    if (!u) return null
+
     return {
       id: u.id,
-      first_name: u.firstName,
-      last_name: u.lastName,
+      first_name: u.first_name,
+      last_name: u.last_name,
       username: u.username,
-      language_code: u.languageCode,
-      photo_url: u.photoUrl,
+      language_code: u.language_code,
+      photo_url: u.photo_url,
     }
-  }, [initData?.user, isTelegram])
+  }, [isTelegram])
 
   // Extract theme
   const theme = useMemo<TelegramTheme>(() => {
-    if (!themeParams) return defaultTheme
+    if (!isTelegram) return defaultTheme
 
+    const tp = WebApp.themeParams
     return {
-      colorScheme: miniApp?.isDark ? 'dark' : 'light',
-      backgroundColor: themeParams.bgColor || defaultTheme.backgroundColor,
-      textColor: themeParams.textColor || defaultTheme.textColor,
-      hintColor: themeParams.hintColor || defaultTheme.hintColor,
-      linkColor: themeParams.linkColor || defaultTheme.linkColor,
-      buttonColor: themeParams.buttonColor || defaultTheme.buttonColor,
-      buttonTextColor: themeParams.buttonTextColor || defaultTheme.buttonTextColor,
-      secondaryBackgroundColor: themeParams.secondaryBgColor || defaultTheme.secondaryBackgroundColor,
+      colorScheme: WebApp.colorScheme || 'light',
+      backgroundColor: tp.bg_color || defaultTheme.backgroundColor,
+      textColor: tp.text_color || defaultTheme.textColor,
+      hintColor: tp.hint_color || defaultTheme.hintColor,
+      linkColor: tp.link_color || defaultTheme.linkColor,
+      buttonColor: tp.button_color || defaultTheme.buttonColor,
+      buttonTextColor: tp.button_text_color || defaultTheme.buttonTextColor,
+      secondaryBackgroundColor: tp.secondary_bg_color || defaultTheme.secondaryBackgroundColor,
     }
-  }, [themeParams, miniApp?.isDark])
+  }, [isTelegram])
 
   // Start param and deep link
-  const startParam = launchParams?.initDataRaw
-    ? new URLSearchParams(launchParams.initDataRaw).get('start_param')
-    : null
+  const startParam = WebApp.initDataUnsafe?.start_param || null
   const deepLink = useMemo(() => parseDeepLink(startParam), [startParam])
 
   // Initialize
   useEffect(() => {
-    if (isTelegram && miniApp) {
-      miniApp.ready()
-      viewport?.expand()
+    if (isTelegram) {
+      WebApp.ready()
+      WebApp.expand()
     }
     setIsReady(true)
-  }, [isTelegram, miniApp, viewport])
+  }, [isTelegram])
 
   // Apply theme
   useEffect(() => {
@@ -151,74 +135,86 @@ function TelegramProviderInner({ children }: { children: React.ReactNode }) {
   }, [theme])
 
   // Haptic feedback handlers
-  const hapticHandlers = useMemo(() => ({
+  const hapticFeedback = useMemo(() => ({
     impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => {
-      hapticFeedback?.impactOccurred(style)
+      if (isTelegram) {
+        WebApp.HapticFeedback.impactOccurred(style)
+      }
     },
     notificationOccurred: (type: 'error' | 'success' | 'warning') => {
-      hapticFeedback?.notificationOccurred(type)
+      if (isTelegram) {
+        WebApp.HapticFeedback.notificationOccurred(type)
+      }
     },
     selectionChanged: () => {
-      hapticFeedback?.selectionChanged()
+      if (isTelegram) {
+        WebApp.HapticFeedback.selectionChanged()
+      }
     },
-  }), [hapticFeedback])
+  }), [isTelegram])
 
   // Main button handlers
-  const mainButtonHandlers = useMemo(() => ({
-    show: () => mainButton?.show(),
-    hide: () => mainButton?.hide(),
-    setText: (text: string) => mainButton?.setText(text),
-    onClick: (callback: () => void) => mainButton?.on('click', callback),
-    offClick: (callback: () => void) => mainButton?.off('click', callback),
-    showProgress: (leaveActive?: boolean) => mainButton?.showProgress(leaveActive),
-    hideProgress: () => mainButton?.hideProgress(),
-    enable: () => mainButton?.enable(),
-    disable: () => mainButton?.disable(),
-  }), [mainButton])
+  const mainButton = useMemo(() => ({
+    show: () => WebApp.MainButton.show(),
+    hide: () => WebApp.MainButton.hide(),
+    setText: (text: string) => { WebApp.MainButton.text = text },
+    onClick: (callback: () => void) => WebApp.MainButton.onClick(callback),
+    offClick: (callback: () => void) => WebApp.MainButton.offClick(callback),
+    showProgress: (leaveActive?: boolean) => WebApp.MainButton.showProgress(leaveActive),
+    hideProgress: () => WebApp.MainButton.hideProgress(),
+    enable: () => WebApp.MainButton.enable(),
+    disable: () => WebApp.MainButton.disable(),
+  }), [])
 
   // Back button handlers
-  const backButtonHandlers = useMemo(() => ({
-    show: () => backButton?.show(),
-    hide: () => backButton?.hide(),
-    onClick: (callback: () => void) => backButton?.on('click', callback),
-    offClick: (callback: () => void) => backButton?.off('click', callback),
-  }), [backButton])
+  const backButton = useMemo(() => ({
+    show: () => WebApp.BackButton.show(),
+    hide: () => WebApp.BackButton.hide(),
+    onClick: (callback: () => void) => WebApp.BackButton.onClick(callback),
+    offClick: (callback: () => void) => WebApp.BackButton.offClick(callback),
+  }), [])
 
-  const expand = useCallback(() => viewport?.expand(), [viewport])
-  const close = useCallback(() => miniApp?.close(), [miniApp])
+  const expand = useCallback(() => WebApp.expand(), [])
+  const close = useCallback(() => WebApp.close(), [])
+
+  // QR Scanner
+  const showQRScanner = useCallback((params?: { text?: string }): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!isTelegram) {
+        resolve(null)
+        return
+      }
+      WebApp.showScanQrPopup(params || {}, (data) => {
+        WebApp.closeScanQrPopup()
+        resolve(data || null)
+      })
+    })
+  }, [isTelegram])
 
   const value = useMemo<TelegramContextValue>(() => ({
     user,
     theme,
-    initData: launchParams?.initDataRaw || '',
-    initDataUnsafe: initData as unknown as Record<string, unknown> || {},
+    initData: WebApp.initData || '',
+    initDataUnsafe: WebApp.initDataUnsafe as unknown as Record<string, unknown> || {},
     isReady,
     isTelegram,
     startParam,
     deepLink,
-    hapticFeedback: hapticHandlers,
-    mainButton: mainButtonHandlers,
-    backButton: backButtonHandlers,
+    hapticFeedback,
+    mainButton,
+    backButton,
     expand,
     close,
+    showQRScanner,
   }), [
-    user, theme, launchParams?.initDataRaw, initData, isReady, isTelegram,
-    startParam, deepLink, hapticHandlers, mainButtonHandlers, backButtonHandlers,
-    expand, close
+    user, theme, isReady, isTelegram, startParam, deepLink,
+    hapticFeedback, mainButton, backButton, expand, close, showQRScanner
   ])
 
   return (
     <TelegramContext.Provider value={value}>
       {children}
     </TelegramContext.Provider>
-  )
-}
-
-export function TelegramProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <SDKProvider acceptCustomStyles>
-      <TelegramProviderInner>{children}</TelegramProviderInner>
-    </SDKProvider>
   )
 }
 
