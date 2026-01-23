@@ -152,10 +152,11 @@ export async function sendMessageWithButtons(
   buttons: Array<Array<{ text: string; url?: string; callback_data?: string }>>
 ): Promise<boolean> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await notificationBot.api.sendMessage(chatId, text, {
       parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: buttons,
+        inline_keyboard: buttons as any,
       },
     })
     return true

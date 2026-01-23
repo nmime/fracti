@@ -86,6 +86,13 @@ if (typeof cleanupInterval.unref === 'function') {
 }
 
 /**
+ * Clear the rate limit store (for testing only)
+ */
+export function _resetRateLimitStore(): void {
+  store.clear()
+}
+
+/**
  * Calculate effective limit based on violations
  */
 function getEffectiveLimit(

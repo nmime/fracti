@@ -215,8 +215,8 @@ app.onError((err, c) => {
         success: false,
         error: 'Validation Error',
         message: 'Invalid request data',
-        details: err.errors.map((e) => ({
-          path: e.path.join('.'),
+        details: err.issues.map((e) => ({
+          path: e.path.map(String).join('.'),
           message: e.message,
         })),
         requestId: reqId,

@@ -3,8 +3,6 @@ import {
   getAllSettlements,
   getGroupMembers,
   type ExpenseRecord,
-  type SettlementRecord,
-  type MemberRecord,
 } from './dynamodb'
 
 /**

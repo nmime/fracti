@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto'
 import {
   docClient,
-  keys,
   type ExpenseSplit,
   createExpense,
   getGroup,

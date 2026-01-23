@@ -73,7 +73,7 @@ async function fetchFiatRates(baseCurrency: string): Promise<Record<string, numb
 /**
  * Get exchange rates with caching
  */
-async function getExchangeRates(baseCurrency: string): Promise<Record<string, number>> {
+export async function getExchangeRates(baseCurrency: string): Promise<Record<string, number>> {
   const cacheKey = baseCurrency.toUpperCase()
   const cached = rateCache.get(cacheKey)
 

@@ -1,6 +1,5 @@
 import { generateExpenseReport, type ExpenseReportRow } from './analytics'
 import { getAllSettlements, getGroup, getGroupMembers } from './dynamodb'
-import { logger } from './logger'
 
 /**
  * Export functionality for CSV and PDF generation
@@ -114,7 +113,6 @@ export async function generateGroupReportCSV(
   }
 
   for (const expense of expenses) {
-    const existing = memberBalances.get(expense.payer) ?? { paid: 0, owed: 0 }
     // Find the member ID by name (simplified - in real app would use ID)
     for (const [id, data] of memberBalances.entries()) {
       const member = members.find((m) => m.id === id)

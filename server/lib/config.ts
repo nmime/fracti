@@ -13,8 +13,8 @@ const envSchema = z.object({
   // AWS SAM local development flag
   AWS_SAM_LOCAL: z
     .string()
-    .transform((v) => v === 'true')
-    .default('false'),
+    .default('false')
+    .transform((v) => v === 'true'),
 
   // DynamoDB
   TABLE_NAME: z
@@ -65,8 +65,8 @@ const envSchema = z.object({
   // Whether to skip TON verification (for testing)
   SKIP_TON_VERIFICATION: z
     .string()
-    .transform((v) => v === 'true')
-    .default('false'),
+    .default('false')
+    .transform((v) => v === 'true'),
 })
 
 export type Env = z.infer<typeof envSchema>

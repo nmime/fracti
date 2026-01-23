@@ -1,10 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Hono } from 'hono'
-import { rateLimit, standardRateLimit, aiRateLimit } from '@server/middleware/rateLimit'
+import { rateLimit, standardRateLimit, aiRateLimit, _resetRateLimitStore } from '@server/middleware/rateLimit'
 
 describe('Rate Limiting Middleware', () => {
   beforeEach(() => {
+    _resetRateLimitStore()
     vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('Fixed Window Rate Limiting', () => {

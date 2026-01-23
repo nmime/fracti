@@ -6,7 +6,7 @@ Description: >
 
 Globals:
   Function:
-    Runtime: nodejs20.x
+    Runtime: nodejs22.x
     Timeout: 30
     MemorySize: 512
     Architectures:
@@ -17,7 +17,7 @@ Globals:
         NODE_ENV: !Ref Stage
         TABLE_NAME: !Ref FractiTable
         S3_BUCKET_NAME: !Ref AvatarsBucket
-        BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
+        BEDROCK_MODEL_ID: anthropic.claude-sonnet-4-20250514-v1:0
         TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
         AWS_XRAY_SDK_ENABLED: 'true'  # Enable X-Ray SDK
 
@@ -141,6 +141,8 @@ Resources:
               Action:
                 - bedrock:InvokeModel
               Resource:
+                - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-sonnet-4-*'
+                - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-opus-4-*'
                 - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-5-sonnet-*'
             # X-Ray permissions
             - Effect: Allow
@@ -168,7 +170,7 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: true
-        Target: 'es2022'
+        Target: 'es2024'
         Format: esm
         Sourcemap: true
         OutExtension:

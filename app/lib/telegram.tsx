@@ -96,8 +96,9 @@ function parseDeepLink(startParam: string | null): DeepLinkParams {
   const groupId = parts[1]
   const expenseId = parts[2]
 
+  const validActions = ['view', 'settle', 'expense', 'analytics', 'recurring']
   return {
-    action: ['view', 'settle', 'expense', 'analytics', 'recurring'].includes(action) ? action : 'view',
+    action: action && validActions.includes(action) ? action : 'view',
     groupId,
     expenseId,
   }

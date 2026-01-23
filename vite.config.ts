@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './app'),
@@ -45,7 +46,7 @@ export default defineConfig({
       },
     },
     // Target modern browsers for smaller bundles
-    target: 'es2022',
+    target: 'es2024',
     // Minimize chunk size warning threshold
     chunkSizeWarningLimit: 500,
   },
