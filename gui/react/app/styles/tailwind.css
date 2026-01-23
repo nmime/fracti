@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --font-family-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(14.5% 0 0);
+  --color-muted: oklch(96.1% 0.003 247);
+  --color-muted-foreground: oklch(55.2% 0.016 264);
+  --color-primary: oklch(58.9% 0.19 250);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(96.1% 0.003 247);
+  --color-secondary-foreground: oklch(14.5% 0 0);
+  --color-accent: oklch(96.1% 0.003 247);
+  --color-accent-foreground: oklch(14.5% 0 0);
+  --color-destructive: oklch(57.7% 0.23 27.3);
+  --color-destructive-foreground: oklch(100% 0 0);
+  --color-border: oklch(90% 0.003 247);
+  --color-ring: oklch(58.9% 0.19 250);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(14.5% 0 0);
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --color-background: oklch(14.5% 0 0);
+  --color-foreground: oklch(98.4% 0 0);
+  --color-muted: oklch(21.8% 0.008 264);
+  --color-muted-foreground: oklch(71.2% 0.016 264);
+  --color-primary: oklch(58.9% 0.19 250);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(21.8% 0.008 264);
+  --color-secondary-foreground: oklch(98.4% 0 0);
+  --color-accent: oklch(21.8% 0.008 264);
+  --color-accent-foreground: oklch(98.4% 0 0);
+  --color-destructive: oklch(57.7% 0.23 27.3);
+  --color-destructive-foreground: oklch(100% 0 0);
+  --color-border: oklch(27% 0.008 264);
+  --color-ring: oklch(58.9% 0.19 250);
+  --color-card: oklch(14.5% 0 0);
+  --color-card-foreground: oklch(98.4% 0 0);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    font-family: var(--font-family-sans);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}

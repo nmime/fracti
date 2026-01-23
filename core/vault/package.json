@@ -1,0 +1,12 @@
+{
+  "name": "@core/vault",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "license": "MIT-0",
+  "dependencies": {
+    "@core/constants": "workspace:*"
+  }
+}

@@ -1,0 +1,6 @@
+packages:
+  - core/**
+  - bot
+  - gui/react
+  - infra/cdk
+  - '!infra/**/cdk.out/**'

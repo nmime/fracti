@@ -1,0 +1,33 @@
+# Fracti Application Configuration
+# AI-powered expense splitting Telegram Mini App with TON settlements
+
+app:
+  stack_name: fracti
+  frontend: "@gui/react"
+
+aws:
+  region: us-east-1
+
+cdn:
+  waf:
+    enabled: true
+    ddos_protection: true
+  geo_restrictions:
+    block:
+      - IQ  # Iraq
+      - IR  # Iran
+      - KP  # North Korea
+
+bedrock:
+  model: anthropic.claude-sonnet-4-20250514-v1:0
+  # region: defaults to aws.region if not specified
+
+bot:
+  enabled: true
+  webhook_protection:
+    type: cff  # CloudFront Function - more cost-effective
+    # Options:
+    # - cff: CloudFront Function (~$0/month + $0.10 per 1M requests)
+    # - lambda: Lambda@Edge (~$0.60 per 1M requests)
+    telegram_ip_filter: true
+    secret_token: true
