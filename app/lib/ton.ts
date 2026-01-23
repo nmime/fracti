@@ -172,9 +172,9 @@ interface JettonTransferParams {
 }
 
 function buildJettonTransferPayload({
-  toAddress,
-  jettonAmount,
-  forwardAmount,
+  toAddress: _toAddress,
+  jettonAmount: _jettonAmount,
+  forwardAmount: _forwardAmount,
   comment,
 }: JettonTransferParams): string {
   // Jetton transfer TL-B:

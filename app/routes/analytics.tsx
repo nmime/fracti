@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, TrendingUp, Download, Users, PieChart, Calendar } from 'lucide-react'
+import { BarChart3, TrendingUp, Download, Users, PieChart } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
 import { api, type GroupAnalytics } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function AnalyticsPage() {
   const { t } = useTranslation()
-  const { user } = useTelegram()
+  const { user: _user } = useTelegram()
   const [analytics, setAnalytics] = useState<GroupAnalytics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)

@@ -32,7 +32,7 @@ currencyRoutes.post(
   async (c) => {
     const { amount, from, to } = c.req.valid('json')
 
-    const convertedAmount = await convertCurrency(amount, from, to)
+    const convertedAmount = await convertCurrency(amount, from as "TON" | "USDT" | "USD" | "EUR" | "GBP" | "RUB" | "UAH" | "BTC" | "ETH", to as "TON" | "USDT" | "USD" | "EUR" | "GBP" | "RUB" | "UAH" | "BTC" | "ETH")
     const rate = convertedAmount / amount
 
     return c.json({

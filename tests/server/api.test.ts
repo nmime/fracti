@@ -1,5 +1,36 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { app } from '@server/index'
+
+// Mock config before any other imports
+vi.mock('@server/lib/config', () => ({
+  config: {
+    NODE_ENV: 'test',
+    AWS_SAM_LOCAL: false,
+    TABLE_NAME: 'fracti-test',
+    S3_BUCKET_NAME: 'fracti-test-bucket',
+    TELEGRAM_BOT_TOKEN: 'test-token',
+    MINI_APP_URL: 'https://t.me/FractiBot/app',
+    BEDROCK_MODEL_ID: 'anthropic.claude-sonnet-4-20250514-v1:0',
+    AWS_REGION: 'us-east-1',
+    ALLOWED_ORIGINS: ['http://localhost:3000'],
+    TONCENTER_API_URL: 'https://toncenter.com/api/v3',
+    SKIP_TON_VERIFICATION: false,
+  },
+  isDevelopment: false,
+  isProduction: false,
+  isTest: true,
+  isLocalDev: false,
+  getAllowedOrigins: () => ['http://localhost:3000', 'http://localhost:5173'],
+}))
+
+// Mock logger
+vi.mock('@server/lib/logger', () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}))
 
 // Mock AWS SDK clients
 vi.mock('@aws-sdk/lib-dynamodb', () => ({
@@ -8,35 +39,38 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
       send: vi.fn(),
     })),
   },
-  GetCommand: vi.fn(),
-  PutCommand: vi.fn(),
-  QueryCommand: vi.fn(),
-  DeleteCommand: vi.fn(),
-  UpdateCommand: vi.fn(),
-  BatchWriteCommand: vi.fn(),
-  TransactWriteCommand: vi.fn(),
+  GetCommand: class MockGetCommand { constructor(public input: unknown) {} },
+  PutCommand: class MockPutCommand { constructor(public input: unknown) {} },
+  QueryCommand: class MockQueryCommand { constructor(public input: unknown) {} },
+  DeleteCommand: class MockDeleteCommand { constructor(public input: unknown) {} },
+  UpdateCommand: class MockUpdateCommand { constructor(public input: unknown) {} },
+  BatchWriteCommand: class MockBatchWriteCommand { constructor(public input: unknown) {} },
+  TransactWriteCommand: class MockTransactWriteCommand { constructor(public input: unknown) {} },
 }))
 
 vi.mock('@aws-sdk/client-dynamodb', () => ({
-  DynamoDBClient: vi.fn(() => ({})),
+  DynamoDBClient: class MockDynamoDBClient {},
 }))
 
 vi.mock('@aws-sdk/client-s3', () => ({
-  S3Client: vi.fn(() => ({
-    send: vi.fn(),
-  })),
-  PutObjectCommand: vi.fn(),
-  GetObjectCommand: vi.fn(),
+  S3Client: class MockS3Client {
+    send = vi.fn()
+  },
+  PutObjectCommand: class MockPutObjectCommand { constructor(public input: unknown) {} },
+  GetObjectCommand: class MockGetObjectCommand { constructor(public input: unknown) {} },
 }))
 
 vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
-  BedrockRuntimeClient: vi.fn(() => ({
-    send: vi.fn(),
-  })),
-  InvokeModelCommand: vi.fn(),
+  BedrockRuntimeClient: class MockBedrockRuntimeClient {
+    send = vi.fn()
+  },
+  InvokeModelCommand: class MockInvokeModelCommand { constructor(public input: unknown) {} },
   ThrottlingException: class ThrottlingException extends Error {},
   ServiceQuotaExceededException: class ServiceQuotaExceededException extends Error {},
 }))
+
+// Import app after mocks are set up
+import { app } from '@server/index'
 
 describe('API Health Check', () => {
   it('should return health status', async () => {

@@ -4,10 +4,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const mockSend = vi.fn()
 
 vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
-  BedrockRuntimeClient: vi.fn(() => ({
-    send: mockSend,
-  })),
-  InvokeModelCommand: vi.fn((input) => input),
+  BedrockRuntimeClient: class MockBedrockRuntimeClient {
+    send = mockSend
+  },
+  InvokeModelCommand: class MockInvokeModelCommand {
+    constructor(public input: unknown) {}
+  },
   ThrottlingException: class ThrottlingException extends Error {
     name = 'ThrottlingException'
     constructor() {
