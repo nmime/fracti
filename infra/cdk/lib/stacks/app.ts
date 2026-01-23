@@ -27,6 +27,441 @@ export interface FractiStackProps extends cdk.StackProps {
   stage: string
 }
 
+export interface FractiAppProps {
+  stage: string
+  env: cdk.Environment
+}
+
+/**
+ * FractiApp - Orchestrates all modular stacks for the Fracti application
+ * This is the recommended approach for new deployments
+ */
+export class FractiApp extends Construct {
+  public readonly dynamoDbStack: cdk.Stack
+  public readonly backendStack: cdk.Stack
+  public readonly apiStack: cdk.Stack
+  public readonly cdnStack: cdk.Stack
+
+  constructor(scope: Construct, id: string, props: FractiAppProps) {
+    super(scope, id)
+
+    const { stage, env } = props
+    const isProduction = stage === 'prod'
+
+    // ============================================
+    // Stack 1: DynamoDB (Data Layer)
+    // ============================================
+    this.dynamoDbStack = new cdk.Stack(scope, `Fracti-DynamoDB-${stage}`, {
+      env,
+      description: 'Fracti DynamoDB table and indexes',
+    })
+
+    const table = new dynamodb.Table(this.dynamoDbStack, 'Table', {
+      tableName: `fracti-${stage}`,
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: isProduction },
+      timeToLiveAttribute: 'TTL',
+    })
+
+    // GSI1: User-to-Group lookups
+    table.addGlobalSecondaryIndex({
+      indexName: $.dynamodb.gsi.gsi1,
+      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    })
+
+    // GSI2: Entity lookups by ID
+    table.addGlobalSecondaryIndex({
+      indexName: $.dynamodb.gsi.gsi2,
+      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    })
+
+    // GSI3: User activity timeline
+    table.addGlobalSecondaryIndex({
+      indexName: $.dynamodb.gsi.gsi3,
+      partitionKey: { name: 'GSI3PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI3SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    })
+
+    // ============================================
+    // Stack 2: Backend (Lambda + S3)
+    // ============================================
+    this.backendStack = new cdk.Stack(scope, `Fracti-Backend-${stage}`, {
+      env,
+      description: 'Fracti Lambda functions and S3 buckets',
+    })
+    this.backendStack.addDependency(this.dynamoDbStack)
+
+    // S3 Bucket for Avatars
+    const avatarsBucket = new s3.Bucket(this.backendStack, 'AvatarsBucket', {
+      bucketName: `fracti-avatars-${cdk.Aws.ACCOUNT_ID}-${stage}`,
+      publicReadAccess: true,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: false,
+        blockPublicPolicy: false,
+        ignorePublicAcls: false,
+        restrictPublicBuckets: false,
+      }),
+      cors: [{
+        allowedHeaders: ['*'],
+        allowedMethods: [s3.HttpMethods.GET],
+        allowedOrigins: ['*'],
+        maxAge: 86400,
+      }],
+      removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: !isProduction,
+    })
+
+    // S3 Bucket for Frontend
+    const frontendBucket = new s3.Bucket(this.backendStack, 'FrontendBucket', {
+      bucketName: `fracti-frontend-${cdk.Aws.ACCOUNT_ID}-${stage}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: !isProduction,
+    })
+
+    // Common Lambda environment
+    const lambdaEnvironment = {
+      NODE_ENV: stage,
+      TABLE_NAME: table.tableName,
+      S3_BUCKET_NAME: avatarsBucket.bucketName,
+      BEDROCK_MODEL_ID: $.bedrock.model,
+      AWS_REGION_NAME: env.region || 'us-east-1',
+    }
+
+    // Bot Lambda Function
+    const botFunction = new lambda.Function(this.backendStack, 'BotFunction', {
+      functionName: `fracti-bot-${stage}`,
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'lambda.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../bot')),
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+      tracing: lambda.Tracing.ACTIVE,
+      logRetention: isProduction ? logs.RetentionDays.ONE_MONTH : logs.RetentionDays.ONE_WEEK,
+    })
+
+    // GUI Lambda Function (SSR)
+    const guiFunction = new lambda.Function(this.backendStack, 'GuiFunction', {
+      functionName: `fracti-gui-${stage}`,
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'server/index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../gui/react/build')),
+      environment: {
+        ...lambdaEnvironment,
+        NODE_ENV: isProduction ? 'production' : 'development',
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      tracing: lambda.Tracing.ACTIVE,
+      logRetention: isProduction ? logs.RetentionDays.ONE_MONTH : logs.RetentionDays.ONE_WEEK,
+    })
+
+    // API Lambda Function (REST API for Mini App)
+    const apiFunction = new lambda.Function(this.backendStack, 'ApiFunction', {
+      functionName: `fracti-api-${stage}`,
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../server')),
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      tracing: lambda.Tracing.ACTIVE,
+      logRetention: isProduction ? logs.RetentionDays.ONE_MONTH : logs.RetentionDays.ONE_WEEK,
+    })
+
+    // Grant permissions
+    table.grantReadWriteData(botFunction)
+    table.grantReadWriteData(guiFunction)
+    table.grantReadWriteData(apiFunction)
+    avatarsBucket.grantReadWrite(botFunction)
+    avatarsBucket.grantRead(guiFunction)
+    avatarsBucket.grantReadWrite(apiFunction)
+
+    // Bedrock permissions
+    const bedrockPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['bedrock:InvokeModel'],
+      resources: [
+        `arn:aws:bedrock:${env.region || 'us-east-1'}::foundation-model/anthropic.claude-*`,
+        `arn:aws:bedrock:${env.region || 'us-east-1'}::foundation-model/amazon.nova-*`,
+      ],
+    })
+    botFunction.addToRolePolicy(bedrockPolicy)
+    guiFunction.addToRolePolicy(bedrockPolicy)
+    apiFunction.addToRolePolicy(bedrockPolicy)
+
+    // ============================================
+    // Stack 3: API Gateway
+    // ============================================
+    this.apiStack = new cdk.Stack(scope, `Fracti-API-${stage}`, {
+      env,
+      description: 'Fracti HTTP API Gateway',
+    })
+    this.apiStack.addDependency(this.backendStack)
+
+    const api = new apigateway.HttpApi(this.apiStack, 'Api', {
+      apiName: `fracti-api-${stage}`,
+      description: 'Fracti API Gateway',
+      corsPreflight: {
+        allowOrigins: ['*'],
+        allowMethods: [
+          apigateway.CorsHttpMethod.GET,
+          apigateway.CorsHttpMethod.POST,
+          apigateway.CorsHttpMethod.PUT,
+          apigateway.CorsHttpMethod.DELETE,
+          apigateway.CorsHttpMethod.OPTIONS,
+        ],
+        allowHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'X-Telegram-Bot-Api-Secret-Token', 'Authorization'],
+        maxAge: cdk.Duration.days(1),
+      },
+    })
+
+    // Bot routes
+    const botIntegration = new apigatewayIntegrations.HttpLambdaIntegration('BotIntegration', botFunction)
+    api.addRoutes({
+      path: `${$.artifacts.lambda.bot.basepath}/webhook`,
+      methods: [apigateway.HttpMethod.POST],
+      integration: botIntegration,
+    })
+    api.addRoutes({
+      path: `${$.artifacts.lambda.bot.basepath}/{proxy+}`,
+      methods: [apigateway.HttpMethod.ANY],
+      integration: botIntegration,
+    })
+
+    // GUI routes
+    const guiIntegration = new apigatewayIntegrations.HttpLambdaIntegration('GuiIntegration', guiFunction)
+    api.addRoutes({
+      path: $.artifacts.lambda.gui.basepath,
+      methods: [apigateway.HttpMethod.GET],
+      integration: guiIntegration,
+    })
+    api.addRoutes({
+      path: `${$.artifacts.lambda.gui.basepath}/{proxy+}`,
+      methods: [apigateway.HttpMethod.ANY],
+      integration: guiIntegration,
+    })
+
+    // API routes (REST API for Mini App)
+    const apiIntegration = new apigatewayIntegrations.HttpLambdaIntegration('ApiIntegration', apiFunction)
+    api.addRoutes({
+      path: '/api/{proxy+}',
+      methods: [apigateway.HttpMethod.ANY],
+      integration: apiIntegration,
+    })
+
+    // ============================================
+    // Stack 4: CDN (CloudFront + WAF)
+    // ============================================
+    this.cdnStack = new cdk.Stack(scope, `Fracti-CDN-${stage}`, {
+      env: { ...env, region: 'us-east-1' }, // WAF must be in us-east-1 for CloudFront
+      description: 'Fracti CloudFront distribution and WAF',
+      crossRegionReferences: true,
+    })
+    this.cdnStack.addDependency(this.apiStack)
+
+    // WAF Web ACL
+    const webAcl = new wafv2.CfnWebACL(this.cdnStack, 'WebACL', {
+      name: `fracti-waf-${stage}`,
+      scope: 'CLOUDFRONT',
+      defaultAction: { allow: {} },
+      visibilityConfig: {
+        cloudWatchMetricsEnabled: true,
+        metricName: `fracti-waf-${stage}`,
+        sampledRequestsEnabled: true,
+      },
+      rules: [
+        {
+          name: 'AWS-AWSManagedRulesCommonRuleSet',
+          priority: 1,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              vendorName: 'AWS',
+              name: 'AWSManagedRulesCommonRuleSet',
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'AWSManagedRulesCommonRuleSet',
+            sampledRequestsEnabled: true,
+          },
+        },
+        {
+          name: 'AWS-AWSManagedRulesKnownBadInputsRuleSet',
+          priority: 2,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              vendorName: 'AWS',
+              name: 'AWSManagedRulesKnownBadInputsRuleSet',
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'AWSManagedRulesKnownBadInputsRuleSet',
+            sampledRequestsEnabled: true,
+          },
+        },
+        {
+          name: 'RateLimitRule',
+          priority: 3,
+          action: { block: {} },
+          statement: {
+            rateBasedStatement: {
+              limit: 2000,
+              aggregateKeyType: 'IP',
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'RateLimitRule',
+            sampledRequestsEnabled: true,
+          },
+        },
+      ],
+    })
+
+    // Origin Access Control for S3
+    const oac = new cloudfront.S3OriginAccessControl(this.cdnStack, 'OAC', {
+      originAccessControlName: `fracti-oac-${stage}`,
+      signing: cloudfront.Signing.SIGV4_ALWAYS,
+    })
+
+    // S3 origin
+    const s3Origin = cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(frontendBucket, {
+      originAccessControl: oac,
+    })
+
+    // API Gateway origin
+    const apiOrigin = new cloudfrontOrigins.HttpOrigin(
+      `${api.apiId}.execute-api.${env.region || 'us-east-1'}.amazonaws.com`
+    )
+
+    // SPA routing function
+    const spaRoutingFunction = new cloudfront.Function(this.cdnStack, 'SpaRoutingFunction', {
+      functionName: `fracti-spa-routing-${stage}`,
+      code: cloudfront.FunctionCode.fromInline(`
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          if (!uri.includes('.') && !uri.startsWith('/bot') && !uri.startsWith('/app') && !uri.startsWith('/api')) {
+            request.uri = '/index.html';
+          }
+          return request;
+        }
+      `),
+    })
+
+    // CloudFront Distribution
+    const distribution = new cloudfront.Distribution(this.cdnStack, 'Distribution', {
+      defaultBehavior: {
+        origin: s3Origin,
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        functionAssociations: [{
+          function: spaRoutingFunction,
+          eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+        }],
+      },
+      additionalBehaviors: {
+        '/bot/*': {
+          origin: apiOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        },
+        '/app/*': {
+          origin: apiOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        },
+        '/api/*': {
+          origin: apiOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        },
+      },
+      defaultRootObject: 'index.html',
+      errorResponses: [
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' },
+      ],
+      webAclId: webAcl.attrArn,
+      httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+    })
+
+    // Grant CloudFront access to S3
+    frontendBucket.addToResourcePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      actions: ['s3:GetObject'],
+      resources: [`${frontendBucket.bucketArn}/*`],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceArn': `arn:aws:cloudfront::${cdk.Aws.ACCOUNT_ID}:distribution/${distribution.distributionId}`,
+        },
+      },
+    }))
+
+    // ============================================
+    // Outputs
+    // ============================================
+    new cdk.CfnOutput(this.dynamoDbStack, 'TableName', {
+      value: table.tableName,
+      description: 'DynamoDB table name',
+    })
+
+    new cdk.CfnOutput(this.backendStack, 'AvatarsBucketName', {
+      value: avatarsBucket.bucketName,
+      description: 'S3 bucket for avatars',
+    })
+
+    new cdk.CfnOutput(this.backendStack, 'FrontendBucketName', {
+      value: frontendBucket.bucketName,
+      description: 'S3 bucket for frontend',
+    })
+
+    new cdk.CfnOutput(this.apiStack, 'ApiEndpoint', {
+      value: api.apiEndpoint,
+      description: 'API Gateway endpoint',
+    })
+
+    new cdk.CfnOutput(this.apiStack, 'TelegramWebhookUrl', {
+      value: `${api.apiEndpoint}${$.artifacts.lambda.bot.basepath}/webhook`,
+      description: 'Telegram webhook URL',
+    })
+
+    new cdk.CfnOutput(this.cdnStack, 'CloudFrontDomain', {
+      value: distribution.distributionDomainName,
+      description: 'CloudFront domain',
+    })
+
+    new cdk.CfnOutput(this.cdnStack, 'CloudFrontDistributionId', {
+      value: distribution.distributionId,
+      description: 'CloudFront distribution ID',
+    })
+  }
+}
+
 /**
  * @deprecated Use FractiApp with modular stacks for new deployments
  * This single-stack approach is kept for backward compatibility
