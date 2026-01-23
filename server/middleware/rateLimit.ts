@@ -6,12 +6,22 @@ interface RateLimitConfig {
   maxRequests: number
   keyGenerator?: (c: Context) => string
   message?: string
+  /** Use sliding window algorithm instead of fixed window */
+  slidingWindow?: boolean
+  /** Skip rate limiting for certain conditions */
+  skip?: (c: Context) => boolean
+  /** Penalty multiplier for repeated violations (1.0 = no penalty) */
+  penaltyMultiplier?: number
 }
 
 interface RateLimitStore {
   count: number
   resetTime: number
   lastAccess: number
+  /** Timestamps for sliding window */
+  timestamps?: number[]
+  /** Number of violations for penalty tracking */
+  violations?: number
 }
 
 /**
@@ -76,7 +86,21 @@ if (typeof cleanupInterval.unref === 'function') {
 }
 
 /**
- * Create rate limiting middleware
+ * Calculate effective limit based on violations
+ */
+function getEffectiveLimit(
+  maxRequests: number,
+  violations: number,
+  penaltyMultiplier: number
+): number {
+  if (penaltyMultiplier <= 1 || violations === 0) return maxRequests
+  // Reduce limit by penalty factor for each violation
+  const penalty = Math.pow(penaltyMultiplier, Math.min(violations, 5))
+  return Math.max(1, Math.floor(maxRequests / penalty))
+}
+
+/**
+ * Create rate limiting middleware with sliding window support
  */
 export function rateLimit(config: RateLimitConfig) {
   const {
@@ -84,41 +108,91 @@ export function rateLimit(config: RateLimitConfig) {
     maxRequests,
     keyGenerator = defaultKeyGenerator,
     message = 'Too many requests, please try again later',
+    slidingWindow = false,
+    skip,
+    penaltyMultiplier = 1,
   } = config
 
   return createMiddleware(async (c: Context, next: Next) => {
+    // Check skip condition
+    if (skip?.(c)) {
+      return next()
+    }
+
     const key = keyGenerator(c)
     const now = Date.now()
 
     let record = store.get(key)
+    let effectiveLimit = maxRequests
 
-    // If no record or window expired, start fresh
-    if (!record || record.resetTime < now) {
-      // Evict old entries before adding new one
-      evictOldEntries()
-      record = {
-        count: 1,
-        resetTime: now + windowMs,
-        lastAccess: now,
+    if (slidingWindow) {
+      // Sliding window algorithm - more accurate rate limiting
+      if (!record) {
+        evictOldEntries()
+        record = {
+          count: 1,
+          resetTime: now + windowMs,
+          lastAccess: now,
+          timestamps: [now],
+          violations: 0,
+        }
+        store.set(key, record)
+      } else {
+        // Remove timestamps outside the window
+        const windowStart = now - windowMs
+        record.timestamps = (record.timestamps || []).filter(t => t > windowStart)
+        record.timestamps.push(now)
+        record.count = record.timestamps.length
+        record.lastAccess = now
+        record.resetTime = now + windowMs
+
+        // Calculate effective limit with penalties
+        effectiveLimit = getEffectiveLimit(maxRequests, record.violations || 0, penaltyMultiplier)
       }
-      store.set(key, record)
     } else {
-      record.count++
-      record.lastAccess = now
+      // Fixed window algorithm (original behavior)
+      if (!record || record.resetTime < now) {
+        evictOldEntries()
+        // Carry over violations from previous window
+        const previousViolations = record?.violations || 0
+        record = {
+          count: 1,
+          resetTime: now + windowMs,
+          lastAccess: now,
+          violations: previousViolations > 0 ? previousViolations - 1 : 0, // Decay violations
+        }
+        store.set(key, record)
+      } else {
+        record.count++
+        record.lastAccess = now
+      }
+
+      effectiveLimit = getEffectiveLimit(maxRequests, record.violations || 0, penaltyMultiplier)
     }
 
     // Set rate limit headers
-    const remaining = Math.max(0, maxRequests - record.count)
+    const remaining = Math.max(0, effectiveLimit - record.count)
     const resetSeconds = Math.ceil((record.resetTime - now) / 1000)
 
-    c.header('X-RateLimit-Limit', String(maxRequests))
+    c.header('X-RateLimit-Limit', String(effectiveLimit))
     c.header('X-RateLimit-Remaining', String(remaining))
     c.header('X-RateLimit-Reset', String(resetSeconds))
+    c.header('X-RateLimit-Policy', `${maxRequests};w=${Math.floor(windowMs / 1000)}`)
 
     // Check if rate limit exceeded
-    if (record.count > maxRequests) {
+    if (record.count > effectiveLimit) {
+      // Track violation
+      record.violations = (record.violations || 0) + 1
+
       c.header('Retry-After', String(resetSeconds))
-      return c.json({ error: message }, 429)
+      return c.json(
+        {
+          error: message,
+          retryAfter: resetSeconds,
+          limit: effectiveLimit,
+        },
+        429
+      )
     }
 
     return next()
@@ -145,16 +219,29 @@ function defaultKeyGenerator(c: Context): string {
  * Pre-configured rate limiters for different endpoints
  */
 
-// Standard API rate limit: 100 requests per minute
+// Standard API rate limit: 100 requests per minute with sliding window
 export const standardRateLimit = rateLimit({
   windowMs: 60 * 1000,
   maxRequests: 100,
+  slidingWindow: true,
+  penaltyMultiplier: 1.5, // Reduce limit by 1.5x per violation
+})
+
+// Strict API rate limit: 30 requests per minute for sensitive endpoints
+export const strictRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  maxRequests: 30,
+  slidingWindow: true,
+  penaltyMultiplier: 2, // Reduce limit by 2x per violation
+  message: 'Rate limit exceeded for sensitive operation. Please wait before trying again.',
 })
 
 // AI endpoint rate limit: 10 requests per minute (expensive operations)
 export const aiRateLimit = rateLimit({
   windowMs: 60 * 1000,
   maxRequests: 10,
+  slidingWindow: true,
+  penaltyMultiplier: 2.5, // More aggressive penalty for AI abuse
   message: 'AI parsing rate limit exceeded. Please wait before trying again.',
 })
 
@@ -162,4 +249,13 @@ export const aiRateLimit = rateLimit({
 export const webhookRateLimit = rateLimit({
   windowMs: 60 * 1000,
   maxRequests: 1000,
+  slidingWindow: false, // Fixed window is fine for webhooks
+})
+
+// Burst rate limit: Allow short bursts but limit sustained traffic
+export const burstRateLimit = rateLimit({
+  windowMs: 10 * 1000, // 10 second window
+  maxRequests: 20, // 20 requests per 10 seconds
+  slidingWindow: true,
+  message: 'Too many requests in a short period. Please slow down.',
 })

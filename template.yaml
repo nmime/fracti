@@ -11,6 +11,7 @@ Globals:
     MemorySize: 512
     Architectures:
       - arm64
+    Tracing: Active  # Enable X-Ray tracing
     Environment:
       Variables:
         NODE_ENV: !Ref Stage
@@ -18,6 +19,7 @@ Globals:
         S3_BUCKET_NAME: !Ref AvatarsBucket
         BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
         TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+        AWS_XRAY_SDK_ENABLED: 'true'  # Enable X-Ray SDK
 
 Parameters:
   TelegramBotToken:
@@ -140,6 +142,15 @@ Resources:
                 - bedrock:InvokeModel
               Resource:
                 - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-5-sonnet-*'
+            # X-Ray permissions
+            - Effect: Allow
+              Action:
+                - xray:PutTraceSegments
+                - xray:PutTelemetryRecords
+                - xray:GetSamplingRules
+                - xray:GetSamplingTargets
+                - xray:GetSamplingStatisticSummaries
+              Resource: '*'
       Events:
         ApiCatchAll:
           Type: HttpApi
@@ -219,6 +230,147 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${FractiFunction}
       RetentionInDays: !If [IsProduction, 30, 7]
+
+  #############################################
+  # CloudWatch Alarms (Production Only)
+  #############################################
+
+  # Lambda Error Rate Alarm
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub fracti-${Stage}-lambda-errors
+      AlarmDescription: Triggers when Lambda error rate exceeds threshold
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FractiFunction
+      TreatMissingData: notBreaching
+
+  # Lambda Duration Alarm (P99 latency)
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub fracti-${Stage}-lambda-duration
+      AlarmDescription: Triggers when Lambda P99 duration exceeds 10 seconds
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10000  # 10 seconds in ms
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FractiFunction
+      TreatMissingData: notBreaching
+
+  # Lambda Throttling Alarm
+  LambdaThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub fracti-${Stage}-lambda-throttles
+      AlarmDescription: Triggers when Lambda is being throttled
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FractiFunction
+      TreatMissingData: notBreaching
+
+  # DynamoDB Throttled Requests Alarm
+  DynamoDBThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub fracti-${Stage}-dynamodb-throttles
+      AlarmDescription: Triggers when DynamoDB requests are throttled
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref FractiTable
+      TreatMissingData: notBreaching
+
+  # DynamoDB User Errors Alarm (4xx errors)
+  DynamoDBUserErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub fracti-${Stage}-dynamodb-user-errors
+      AlarmDescription: Triggers when DynamoDB user error rate is high
+      MetricName: UserErrors
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 50
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref FractiTable
+      TreatMissingData: notBreaching
+
+  # API Gateway 5xx Error Alarm
+  ApiGateway5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub fracti-${Stage}-api-5xx-errors
+      AlarmDescription: Triggers when API Gateway 5xx error rate is high
+      MetricName: 5xx
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref FractiApi
+        - Name: Stage
+          Value: !Ref Stage
+      TreatMissingData: notBreaching
+
+  # API Gateway Latency Alarm (P95)
+  ApiGatewayLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub fracti-${Stage}-api-latency
+      AlarmDescription: Triggers when API Gateway P95 latency exceeds 5 seconds
+      MetricName: Latency
+      Namespace: AWS/ApiGateway
+      ExtendedStatistic: p95
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5000  # 5 seconds in ms
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref FractiApi
+        - Name: Stage
+          Value: !Ref Stage
+      TreatMissingData: notBreaching
 
   #############################################
   # S3 Bucket for Frontend
