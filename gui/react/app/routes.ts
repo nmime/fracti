@@ -8,5 +8,7 @@ export default [
   route("analytics", "routes/analytics.tsx"),
   route("scan", "routes/scan.tsx"),
   route("recurring", "routes/recurring.tsx"),
+  route("session", "routes/session.tsx"),
   route("ok", "routes/healthcheck.tsx"),
+  route(".well-known/appspecific/com.chrome.devtools.json", "routes/devtools.tsx"),
 ] satisfies RouteConfig

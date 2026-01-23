@@ -13,9 +13,24 @@ import { Construct } from 'constructs'
 import * as path from 'path'
 import $ from '@core/constants'
 
+// Re-export modular stacks
+export { DynamoDBStack } from './dynamodb'
+export { BackendStack } from './backend'
+export { ApiStack } from './api'
+export { WafStack } from './waf'
+export { CdnStack } from './cdn'
+export { WebhookStack } from './webhook'
+export { ParamsStack } from './params'
+export { LogsStack } from './logs'
+
 export interface FractiStackProps extends cdk.StackProps {
   stage: string
 }
+
+/**
+ * @deprecated Use FractiApp with modular stacks for new deployments
+ * This single-stack approach is kept for backward compatibility
+ */
 
 export class FractiStack extends cdk.Stack {
   public readonly table: dynamodb.Table
