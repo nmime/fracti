@@ -142,10 +142,27 @@ vite.config.ts.timestamp-*
 .aws-sam/
 samconfig.toml.bak
 
+# AWS CDK
+cdk.out/
+**/cdk.out/
+cdk.context.json
+
 # Build outputs
 dist/
 server/dist/
+build/
+**/build/
+
+# React Router
+.react-router/
 
 # IDE
 .idea/
 .vscode/
+
+# Playwright
+test-results/
+playwright-report/
+
+# pnpm
+.pnpm-store/

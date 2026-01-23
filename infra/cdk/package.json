@@ -1,0 +1,43 @@
+{
+  "name": "@infra/cdk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT-0",
+  "bin": {
+    "infra": "bin/infra.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "cdk": "cdk",
+    "deploy": "cdk deploy --all",
+    "bootstrap": "cdk bootstrap",
+    "synth": "cdk synth",
+    "setup": "tsx scripts/setup.ts",
+    "report": "tsx scripts/report.ts"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-lambda-python-alpha": "^2.234.1-alpha.0",
+    "@aws-sdk/client-cloudfront": "^3.974.0",
+    "@aws-sdk/client-wafv2": "^3.974.0",
+    "@clack/prompts": "^0.9.0",
+    "@core/constants": "workspace:*",
+    "@core/db": "workspace:*",
+    "@core/session": "workspace:*",
+    "@core/tools": "workspace:*",
+    "@core/vault": "workspace:*",
+    "@fracti/bot": "workspace:*",
+    "@gui/react": "workspace:*",
+    "aws-cdk-lib": "^2.234.1",
+    "cdk-nag": "^2.36.0",
+    "constructs": "^10.5.0",
+    "grammy": "^1.39.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "aws-cdk": "^2.234.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}
