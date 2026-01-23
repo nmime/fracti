@@ -44,23 +44,56 @@ app.use(
     ...(isDevelopment ? {} : {
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", 'https://telegram.org'],
+        scriptSrc: [
+          "'self'",
+          'https://telegram.org',
+          'https://*.telegram.org',
+          // TON Connect requires this for wallet connection
+          'https://ton.org',
+        ],
         // Use nonce for styles in production - for now allow inline with strict CSP
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'https://api.telegram.org', 'https://tonapi.io'],
-        fontSrc: ["'self'"],
+        imgSrc: [
+          "'self'",
+          'data:',
+          'blob:',
+          'https:',
+          // Telegram CDN for avatars
+          'https://t.me',
+          'https://*.telegram.org',
+        ],
+        connectSrc: [
+          "'self'",
+          'https://api.telegram.org',
+          'https://tonapi.io',
+          'https://*.tonapi.io',
+          // TON Connect bridge
+          'https://bridge.tonapi.io',
+          'wss://bridge.tonapi.io',
+          // Toncenter for transaction verification
+          'https://toncenter.com',
+          'https://*.toncenter.com',
+        ],
+        fontSrc: ["'self'", 'data:'],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
-        frameAncestors: ["'self'", 'https://web.telegram.org'],
+        frameAncestors: ["'self'", 'https://web.telegram.org', 'https://*.telegram.org'],
+        // Additional security directives
+        upgradeInsecureRequests: [],
+        workerSrc: ["'self'", 'blob:'],
+        manifestSrc: ["'self'"],
       },
-      // HSTS: enforce HTTPS for 1 year, include subdomains
-      strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+      // HSTS: enforce HTTPS for 1 year, include subdomains, preload
+      strictTransportSecurity: 'max-age=31536000; includeSubDomains; preload',
     }),
     xContentTypeOptions: 'nosniff',
     xFrameOptions: 'SAMEORIGIN', // Allow Telegram iframe
     referrerPolicy: 'strict-origin-when-cross-origin',
+    // Additional security headers
+    xXssProtection: '1; mode=block',
+    xDnsPrefetchControl: 'off',
+    xPermittedCrossDomainPolicies: 'none',
   })
 )
 

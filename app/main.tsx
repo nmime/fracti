@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -7,16 +7,19 @@ import { TelegramProvider } from '@/lib/telegram'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/toaster'
 import { DeepLinkHandler } from '@/components/DeepLinkHandler'
+import { RouteLoadingFallback } from '@/components/RouteLoadingFallback'
 import RootLayout from '@/components/RootLayout'
-import HomePage from '@/routes/home'
-import ExpensesPage from '@/routes/expenses'
-import SettlePage from '@/routes/settle'
-import ScanPage from '@/routes/scan'
-import AnalyticsPage from '@/routes/analytics'
-import RecurringPage from '@/routes/recurring'
 import { tonConfig } from '@/lib/config'
 import '@/lib/i18n' // Initialize i18n
 import '@/styles/globals.css'
+
+// Lazy load route components for better initial bundle size
+const HomePage = lazy(() => import('@/routes/home'))
+const ExpensesPage = lazy(() => import('@/routes/expenses'))
+const SettlePage = lazy(() => import('@/routes/settle'))
+const ScanPage = lazy(() => import('@/routes/scan'))
+const AnalyticsPage = lazy(() => import('@/routes/analytics'))
+const RecurringPage = lazy(() => import('@/routes/recurring'))
 
 // Create a client with sensible defaults
 const queryClient = new QueryClient({
@@ -37,16 +40,18 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <TelegramProvider>
             <BrowserRouter>
               <DeepLinkHandler />
-              <Routes>
-                <Route element={<RootLayout />}>
-                  <Route index element={<HomePage />} />
-                  <Route path="expenses" element={<ExpensesPage />} />
-                  <Route path="settle" element={<SettlePage />} />
-                  <Route path="scan" element={<ScanPage />} />
-                  <Route path="analytics" element={<AnalyticsPage />} />
-                  <Route path="recurring" element={<RecurringPage />} />
-                </Route>
-              </Routes>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <Routes>
+                  <Route element={<RootLayout />}>
+                    <Route index element={<HomePage />} />
+                    <Route path="expenses" element={<ExpensesPage />} />
+                    <Route path="settle" element={<SettlePage />} />
+                    <Route path="scan" element={<ScanPage />} />
+                    <Route path="analytics" element={<AnalyticsPage />} />
+                    <Route path="recurring" element={<RecurringPage />} />
+                  </Route>
+                </Routes>
+              </Suspense>
             </BrowserRouter>
             <Toaster />
           </TelegramProvider>
