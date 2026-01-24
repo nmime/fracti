@@ -1,5 +1,4 @@
-import { createMiddleware } from 'hono/factory'
-import type { Context, Next } from 'hono'
+import type { Context, Next, MiddlewareHandler } from 'hono'
 
 interface RateLimitConfig {
   windowMs: number
@@ -109,7 +108,7 @@ function getEffectiveLimit(
 /**
  * Create rate limiting middleware with sliding window support
  */
-export function rateLimit(config: RateLimitConfig) {
+export function rateLimit(config: RateLimitConfig): MiddlewareHandler {
   const {
     windowMs,
     maxRequests,
@@ -120,7 +119,7 @@ export function rateLimit(config: RateLimitConfig) {
     penaltyMultiplier = 1,
   } = config
 
-  return createMiddleware(async (c: Context, next: Next) => {
+  return async (c: Context, next: Next) => {
     // Check skip condition
     if (skip?.(c)) {
       return next()
@@ -203,7 +202,7 @@ export function rateLimit(config: RateLimitConfig) {
     }
 
     return next()
-  })
+  }
 }
 
 /**

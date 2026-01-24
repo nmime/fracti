@@ -1,5 +1,5 @@
 import type { ZodType } from 'zod'
-import type { MemberRecord } from './dynamodb'
+import type { MemberRecord } from '../types/db.types'
 
 /**
  * Extract JSON from text that may contain other content.

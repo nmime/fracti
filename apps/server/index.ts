@@ -9,20 +9,21 @@ import { HTTPException } from 'hono/http-exception'
 import { handle } from 'hono/aws-lambda'
 import { ZodError } from 'zod'
 
-import type { Env } from './lib/factory'
-import { isDevelopment, getAllowedOrigins } from './lib/config'
-import { logger } from './lib/logger'
+import type { Env } from './types/api.types'
+import { isDevelopment, getAllowedOrigins } from './config'
+import { logger } from './utils/logger'
 import { standardRateLimit, aiRateLimit, webhookRateLimit } from './middleware/rateLimit'
-import { groupsRoutes } from './routes/groups'
-import { expensesRoutes } from './routes/expenses'
-import { settlementsRoutes } from './routes/settlements'
-import { usersRoutes } from './routes/users'
-import { analyticsRoutes } from './routes/analytics'
-import { recurringRoutes } from './routes/recurring'
-import { aiRoutes } from './routes/ai'
-import { webhooksRoutes } from './routes/webhooks'
-import { currencyRoutes } from './routes/currency'
-import { authRoutes } from './routes/auth'
+import {
+  groupsRoutes,
+  expensesRoutes,
+  settlementsRoutes,
+  usersRoutes,
+  analyticsRoutes,
+  aiRoutes,
+  webhooksRoutes,
+  currencyRoutes,
+  authRoutes,
+} from './routes'
 
 // Create main Hono app with typed environment
 const app = new Hono<Env>()
@@ -155,9 +156,6 @@ app.route('/api/groups', settlementsRoutes)
 
 // Analytics API (nested under groups) - already covered by /api/groups/*
 app.route('/api/groups', analyticsRoutes)
-
-// Recurring templates API (nested under groups) - already covered by /api/groups/*
-app.route('/api/groups', recurringRoutes)
 
 // Users API - user-centric queries (personal expenses, debts, settlements)
 app.use('/api/users/*', standardRateLimit)
