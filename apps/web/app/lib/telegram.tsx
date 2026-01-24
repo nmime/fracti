@@ -121,11 +121,13 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
     setIsReady(true)
   }, [isTelegram])
 
-  // Apply theme
+  // Note: Theme is now managed by ThemeProvider in theme.tsx
+  // Apply Telegram background color for seamless integration
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme.colorScheme === 'dark')
-    document.body.style.backgroundColor = theme.backgroundColor
-  }, [theme])
+    if (isTelegram) {
+      document.body.style.backgroundColor = theme.backgroundColor
+    }
+  }, [theme, isTelegram])
 
   // Haptic feedback handlers
   const hapticFeedback = useMemo(() => ({

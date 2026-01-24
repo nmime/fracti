@@ -5,6 +5,24 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 const resources = {
   en: {
     translation: {
+      // Auth
+      'auth.welcome': 'Welcome to Fracti',
+      'auth.subtitle': 'Split expenses with friends. Simple, fast, and powered by TON blockchain.',
+      'auth.authenticating': 'Authenticating...',
+      'auth.feature.track': 'Track expenses',
+      'auth.feature.split': 'Split with friends',
+      'auth.feature.settle': 'Pay with TON',
+      'auth.feature.ai': 'AI receipt scan',
+      'auth.or': 'or',
+      'auth.openInTelegram': 'Open in Telegram',
+      'auth.footer': 'Powered by TON blockchain',
+
+      // Theme
+      'theme.toggle': 'Toggle theme',
+      'theme.light': 'Light',
+      'theme.dark': 'Dark',
+      'theme.system': 'System',
+
       // Navigation
       'nav.home': 'Home',
       'nav.expenses': 'Expenses',
@@ -93,10 +111,27 @@ const resources = {
 
       // Scan
       'scan.title': 'Scan Receipt',
+      'scan.description': 'Take a photo or upload a receipt to add expenses',
       'scan.takePhoto': 'Take Photo',
       'scan.uploadPhoto': 'Upload Photo',
       'scan.scanning': 'Scanning...',
       'scan.noItems': 'No items found',
+      'scan.uploadCta': 'Tap to scan receipt',
+      'scan.formats': 'JPEG, PNG, PDF',
+      'scan.camera': 'Camera',
+      'scan.gallery': 'Gallery',
+      'scan.orType': 'Or type your expense',
+      'scan.typePlaceholder': 'e.g., "Dinner 50 TON split 3 ways"',
+      'scan.analyzing': 'Analyzing receipt...',
+      'scan.cancel': 'Cancel',
+      'scan.createExpense': 'Create Expense',
+      'scan.receipt.confidence': '{{value}}% confidence',
+      'scan.receipt.items': 'Items',
+      'scan.receipt.selected': '{{count}} selected',
+      'scan.receipt.quantity': 'x{{count}}',
+      'scan.receipt.subtotal': 'Subtotal',
+      'scan.receipt.tax': 'Tax',
+      'scan.receipt.yourShare': 'Your share',
 
       // Analytics
       'analytics.title': 'Analytics',
@@ -198,10 +233,38 @@ const resources = {
       'toast.expenseError.description': 'Please try again',
       'toast.expenseDeleted.title': 'Expense deleted',
       'toast.deleteError.title': 'Failed to delete',
+      'toast.scanError.title': 'Scan failed',
+      'toast.scanError.description': 'Could not process the image',
+      'toast.receiptScanned.title': 'Receipt scanned!',
+      'toast.receiptScanned.description': 'Found {{count}} items',
+      'toast.parseSuccess.title': 'Expense parsed',
+      'toast.parseSuccess.description': '{{description}} for {{amount}}',
+      'toast.parseError.title': 'Parse failed',
+      'toast.parseError.description': 'Could not understand the text',
+      'toast.expenseCreated.title': 'Expense created',
+      'toast.expenseCreated.description': '{{description}} for {{amount}} TON',
     },
   },
   ru: {
     translation: {
+      // Auth
+      'auth.welcome': 'Добро пожаловать в Fracti',
+      'auth.subtitle': 'Делите расходы с друзьями. Просто, быстро, на блокчейне TON.',
+      'auth.authenticating': 'Авторизация...',
+      'auth.feature.track': 'Учёт расходов',
+      'auth.feature.split': 'Делите с друзьями',
+      'auth.feature.settle': 'Оплата в TON',
+      'auth.feature.ai': 'ИИ-сканер чеков',
+      'auth.or': 'или',
+      'auth.openInTelegram': 'Открыть в Telegram',
+      'auth.footer': 'Работает на блокчейне TON',
+
+      // Theme
+      'theme.toggle': 'Переключить тему',
+      'theme.light': 'Светлая',
+      'theme.dark': 'Тёмная',
+      'theme.system': 'Системная',
+
       // Navigation
       'nav.home': 'Главная',
       'nav.expenses': 'Расходы',
@@ -290,10 +353,27 @@ const resources = {
 
       // Scan
       'scan.title': 'Сканировать чек',
+      'scan.description': 'Сфотографируйте или загрузите чек для добавления расходов',
       'scan.takePhoto': 'Сделать фото',
       'scan.uploadPhoto': 'Загрузить фото',
       'scan.scanning': 'Сканирование...',
       'scan.noItems': 'Позиции не найдены',
+      'scan.uploadCta': 'Нажмите для сканирования',
+      'scan.formats': 'JPEG, PNG, PDF',
+      'scan.camera': 'Камера',
+      'scan.gallery': 'Галерея',
+      'scan.orType': 'Или введите расход',
+      'scan.typePlaceholder': 'напр., "Ужин 50 TON на троих"',
+      'scan.analyzing': 'Анализ чека...',
+      'scan.cancel': 'Отмена',
+      'scan.createExpense': 'Создать расход',
+      'scan.receipt.confidence': 'Точность {{value}}%',
+      'scan.receipt.items': 'Позиции',
+      'scan.receipt.selected': 'Выбрано: {{count}}',
+      'scan.receipt.quantity': 'x{{count}}',
+      'scan.receipt.subtotal': 'Подытог',
+      'scan.receipt.tax': 'Налог',
+      'scan.receipt.yourShare': 'Ваша доля',
 
       // Analytics
       'analytics.title': 'Аналитика',
@@ -395,6 +475,16 @@ const resources = {
       'toast.expenseError.description': 'Попробуйте ещё раз',
       'toast.expenseDeleted.title': 'Расход удалён',
       'toast.deleteError.title': 'Не удалось удалить',
+      'toast.scanError.title': 'Ошибка сканирования',
+      'toast.scanError.description': 'Не удалось обработать изображение',
+      'toast.receiptScanned.title': 'Чек отсканирован!',
+      'toast.receiptScanned.description': 'Найдено позиций: {{count}}',
+      'toast.parseSuccess.title': 'Расход распознан',
+      'toast.parseSuccess.description': '{{description}} на {{amount}}',
+      'toast.parseError.title': 'Ошибка распознавания',
+      'toast.parseError.description': 'Не удалось понять текст',
+      'toast.expenseCreated.title': 'Расход создан',
+      'toast.expenseCreated.description': '{{description}} на {{amount}} TON',
     },
   },
 }
