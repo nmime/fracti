@@ -1,6 +1,6 @@
 import type { Context, Next } from 'hono'
 import { validateInitData, validateWidgetData, type TelegramUser } from '../lib/telegram'
-import { isLocalDev } from '../lib/config'
+import { isLocalDev, isProduction } from '../lib/config'
 import { logger } from '../lib/logger'
 
 // Track if we've already logged the dev mode warning (avoid spam)
@@ -145,9 +145,22 @@ export async function requireAuth(c: Context, next: Next) {
 }
 
 /**
- * Get the current user from context, or dev user if in development
- * Useful for routes that use authMiddleware but need a user object
+ * Get the current user from context
+ * In development, falls back to dev user; in production, throws if no user
  */
 export function getCurrentUser(c: Context): TelegramUser {
-  return c.get('telegramUser') ?? getDevUser()
+  const user = c.get('telegramUser')
+
+  if (user) {
+    return user
+  }
+
+  // In production, we should never reach here if requireAuth is used properly
+  if (isProduction) {
+    logger.error('getCurrentUser called without authenticated user in production')
+    throw new Error('No authenticated user')
+  }
+
+  // Development fallback
+  return getDevUser()
 }

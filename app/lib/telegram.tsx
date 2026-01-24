@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 import WebApp from '@twa-dev/sdk'
 import { demoUser } from '@/lib/fixtures'
 import { logger } from '@/lib/logger'
+import { isDevelopment } from '@/lib/config'
 
 // Extend Window interface for Telegram WebApp
 declare global {
@@ -116,15 +117,22 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isTelegram) {
       setIsReady(true)
-      // Use demo user for development (when not running in Telegram)
-      setUser(demoUser)
+      // Use demo user only in development mode (never in production)
+      if (isDevelopment) {
+        setUser(demoUser)
+        logger.debug('Using demo user for development mode')
 
-      // Check URL params for development deep linking
-      const urlParams = new URLSearchParams(window.location.search)
-      const devStartParam = urlParams.get('startapp')
-      if (devStartParam) {
-        setStartParam(devStartParam)
-        setDeepLink(parseDeepLink(devStartParam))
+        // Check URL params for development deep linking
+        const urlParams = new URLSearchParams(window.location.search)
+        const devStartParam = urlParams.get('startapp')
+        if (devStartParam) {
+          setStartParam(devStartParam)
+          setDeepLink(parseDeepLink(devStartParam))
+        }
+      } else {
+        // In production without Telegram context, user must authenticate
+        setUser(null)
+        logger.warn('Not in Telegram context in production mode - authentication required')
       }
       return
     }

@@ -17,9 +17,46 @@ interface ApiOptions {
   timeout?: number
 }
 
+// Auth types
+export interface AuthUser {
+  id: number
+  firstName: string
+  lastName?: string
+  username?: string
+  photoUrl?: string
+  languageCode?: string
+  isPremium?: boolean
+}
+
+export interface AuthResponse {
+  user: AuthUser
+  authMethod: 'init_data' | 'widget' | 'dev'
+  authenticated: boolean
+  groupCount?: number
+}
+
+export interface AuthStatus {
+  authenticated: boolean
+  authMethod: 'init_data' | 'widget' | 'dev' | null
+  userId: number | null
+  environment: 'production' | 'development'
+  devModeEnabled: boolean
+}
+
+export interface TelegramWidgetData {
+  id: number
+  first_name: string
+  last_name?: string
+  username?: string
+  photo_url?: string
+  auth_date: number
+  hash: string
+}
+
 class ApiClient {
   private baseUrl: string
   private initData: string = ''
+  private widgetData: TelegramWidgetData | null = null
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
@@ -27,6 +64,18 @@ class ApiClient {
 
   setInitData(initData: string) {
     this.initData = initData
+  }
+
+  setWidgetData(data: TelegramWidgetData) {
+    this.widgetData = data
+  }
+
+  getInitData(): string {
+    return this.initData
+  }
+
+  hasAuth(): boolean {
+    return !!this.initData || !!this.widgetData
   }
 
   private async request<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
@@ -39,12 +88,21 @@ class ApiClient {
     // Use provided signal or our timeout controller
     const fetchSignal = signal || controller.signal
 
+    // Build auth headers
+    const authHeaders: Record<string, string> = {}
+    if (this.initData) {
+      authHeaders['X-Telegram-Init-Data'] = this.initData
+    }
+    if (this.widgetData) {
+      authHeaders['X-Telegram-Widget-Data'] = JSON.stringify(this.widgetData)
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': this.initData,
+          ...authHeaders,
           ...headers,
         },
         body: body ? JSON.stringify(body) : undefined,
@@ -263,6 +321,29 @@ class ApiClient {
 
   async getSupportedCurrencies() {
     return this.request<SupportedCurrency[]>('/currency/supported')
+  }
+
+  // Auth endpoints
+  async verifyAuth(): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/me')
+  }
+
+  async getAuthStatus(): Promise<AuthStatus> {
+    return this.request<AuthStatus>('/auth/status')
+  }
+
+  async authWithInitData(initData: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/init', {
+      method: 'POST',
+      body: { initData },
+    })
+  }
+
+  async authWithWidget(widgetData: TelegramWidgetData): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/telegram', {
+      method: 'POST',
+      body: widgetData,
+    })
   }
 }
 
