@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
-import { Camera, Upload, Sparkles, Check, X } from 'lucide-react'
+import { Camera, Upload, Sparkles, Check, X, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
+import { useGroup } from '@/lib/group-context'
 import { type ParsedReceipt } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { demoReceipt } from '@/lib/fixtures'
@@ -10,11 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useToast } from '@/components/ui/use-toast'
 
 export default function ScanPage() {
   const { t } = useTranslation()
   const { hapticFeedback } = useTelegram()
+  const { groupId, userGroups, setGroupId } = useGroup()
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -157,6 +160,58 @@ export default function ScanPage() {
     setReceipt(null)
     setSelectedItems(new Set())
     setPreviewUrl(null)
+  }
+
+  // USER VIEW: Show group picker when no group is selected
+  if (!groupId) {
+    return (
+      <div className="flex flex-col p-4 pb-20">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">{t('scan.title')}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t('userDashboard.selectGroupDescription')}
+          </p>
+        </div>
+
+        {/* Group Picker */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">{t('userDashboard.selectGroup')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {userGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {t('userDashboard.noGroups')}
+              </p>
+            ) : (
+              userGroups.map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() => setGroupId(group.id)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {group.title.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{group.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {group.memberCount} {t('userDashboard.members')}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

@@ -101,17 +101,17 @@ bot.command('start', async (ctx) => {
     const keyboard = new InlineKeyboard()
       .webApp(t('bot.welcome.openApp'), MINI_APP_URL)
       .row()
-      .url('Add to Group', `https://t.me/${ctx.me.username}?startgroup=true`)
+      .url(t('bot.welcome.addToGroup'), `https://t.me/${ctx.me.username}?startgroup=true`)
 
     await ctx.reply(
       `👋 ${t('bot.welcome.private')}\n\n` +
         `${t('bot.welcome.privateDescription')}\n\n` +
-        '<b>How to use:</b>\n' +
-        '1. Add me to a group chat\n' +
-        '2. Send messages like "I paid 50 for dinner"\n' +
-        '3. Or send receipt photos to scan\n' +
-        '4. Open the Mini App to view balances and settle up\n\n' +
-        '📱 Click below to get started!',
+        `<b>${t('bot.welcome.howToUse')}</b>\n` +
+        `${t('bot.welcome.howToStep1')}\n` +
+        `${t('bot.welcome.howToStep2')}\n` +
+        `${t('bot.welcome.howToStep3')}\n` +
+        `${t('bot.welcome.howToStep4')}\n\n` +
+        `📱 ${t('bot.welcome.getStarted')}`,
       {
         parse_mode: 'HTML',
         reply_markup: keyboard,
@@ -124,11 +124,11 @@ bot.command('start', async (ctx) => {
     await ctx.reply(
       `💰 ${t('bot.welcome.group')}\n\n` +
         `${t('bot.welcome.groupDescription')}\n\n` +
-        '<b>Quick start:</b>\n' +
-        '• "I paid 50 for dinner with @alice"\n' +
-        '• Send a receipt photo\n' +
-        '• /balance - View balances\n' +
-        '• /help - More commands',
+        `<b>${t('bot.welcome.quickStart')}</b>\n` +
+        `• ${t('bot.welcome.quickExample')}\n` +
+        `• ${t('bot.welcome.quickReceipt')}\n` +
+        `• ${t('bot.welcome.quickBalance')}\n` +
+        `• ${t('bot.welcome.quickHelp')}`,
       {
         parse_mode: 'HTML',
         reply_markup: keyboard,
@@ -454,6 +454,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
  * Users can type @BotName <amount> <description> in any chat
  */
 bot.on('inline_query', async (ctx) => {
+  const t = getT(ctx)
   const query = ctx.inlineQuery.query.trim()
   const userId = ctx.from.id
 
@@ -464,7 +465,7 @@ bot.on('inline_query', async (ctx) => {
 
   if (match) {
     const amount = parseFloat(match[1])
-    const description = match[2] || 'Expense'
+    const description = match[2] || t('bot.expense.created', { description: '', amount: '' }).split(':')[0].trim()
 
     // Get user's groups for suggestions
     const memberships = await getGroupsByUser(userId)
@@ -480,19 +481,19 @@ bot.on('inline_query', async (ctx) => {
           type: 'article' as const,
           id: `expense-${groupId}-${Date.now()}`,
           title: `💸 ${amount} - ${description}`,
-          description: `Add to ${group.title}`,
+          description: t('bot.inline.addTo', { group: group.title }),
           thumbnail_url: 'https://i.imgur.com/YourIcon.png', // Replace with actual icon
           input_message_content: {
-            message_text: `💸 <b>New Expense</b>\n\n` +
-              `Amount: <b>${amount} ${group.currency ?? 'TON'}</b>\n` +
-              `Description: ${description}\n` +
-              `Group: ${group.title}\n\n` +
-              `<i>Open the app to confirm and split this expense</i>`,
+            message_text: `💸 <b>${t('bot.inline.newExpense')}</b>\n\n` +
+              `${t('bot.inline.amount')}: <b>${amount} ${group.currency ?? 'TON'}</b>\n` +
+              `${t('bot.inline.description')}: ${description}\n` +
+              `${t('bot.inline.group')}: ${group.title}\n\n` +
+              `<i>${t('bot.inline.confirmPrompt')}</i>`,
             parse_mode: 'HTML' as const,
           },
           reply_markup: {
             inline_keyboard: [[
-              { text: '✅ Add Expense', web_app: { url: `${MINI_APP_URL}?group=${groupId}&amount=${amount}&desc=${encodeURIComponent(description)}` } }
+              { text: `✅ ${t('bot.inline.addExpense')}`, web_app: { url: `${MINI_APP_URL}?group=${groupId}&amount=${amount}&desc=${encodeURIComponent(description)}` } }
             ]]
           },
         })
@@ -504,12 +505,12 @@ bot.on('inline_query', async (ctx) => {
       type: 'article' as const,
       id: `expense-new-${Date.now()}`,
       title: `💸 ${amount} - ${description}`,
-      description: 'Share expense details',
+      description: t('bot.inline.shareDetails'),
       input_message_content: {
-        message_text: `💸 <b>Expense to Split</b>\n\n` +
-          `Amount: <b>${amount}</b>\n` +
-          `Description: ${description}\n\n` +
-          `<i>Add me to a group to track shared expenses!</i>`,
+        message_text: `💸 <b>${t('bot.inline.expenseToSplit')}</b>\n\n` +
+          `${t('bot.inline.amount')}: <b>${amount}</b>\n` +
+          `${t('bot.inline.description')}: ${description}\n\n` +
+          `<i>${t('bot.inline.addToGroupPrompt')}</i>`,
         parse_mode: 'HTML' as const,
       },
     })
@@ -518,12 +519,12 @@ bot.on('inline_query', async (ctx) => {
     results.push({
       type: 'article' as const,
       id: 'help',
-      title: '💡 How to use inline mode',
-      description: 'Type: amount description (e.g., "50 dinner")',
+      title: `💡 ${t('bot.inline.howToUseTitle')}`,
+      description: t('bot.inline.howToUseDescription'),
       input_message_content: {
-        message_text: `💡 <b>Fracti Inline Mode</b>\n\n` +
-          `Type: <code>@${ctx.me.username} 50 dinner</code>\n\n` +
-          `This lets you quickly share expenses in any chat!`,
+        message_text: `💡 <b>${t('bot.inline.inlineModeTitle')}</b>\n\n` +
+          `${t('bot.inline.typeExample', { botUsername: ctx.me.username })}\n\n` +
+          `${t('bot.inline.quickSharePrompt')}`,
         parse_mode: 'HTML' as const,
       },
     })

@@ -500,6 +500,7 @@ export interface UserGroup {
   currency?: string
   joinedAt: string
   balance: number
+  expenseCount: number
 }
 
 export interface UserExpense {

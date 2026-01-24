@@ -1,13 +1,16 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Search, Users } from 'lucide-react'
+import { Search, Users, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
 import { useGroup } from '@/lib/group-context'
-import { type Expense, type User, type CreateExpenseInput, api } from '@/lib/api'
+import { type Expense, type User, type CreateExpenseInput, type UserExpense, api } from '@/lib/api'
+import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 import { ExpenseCard } from '@/components/ExpenseCard'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
@@ -15,9 +18,10 @@ import { useToast } from '@/components/ui/use-toast'
 export default function ExpensesPage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
-  const { groupId, isLoading: groupLoading } = useGroup()
+  const { groupId, isLoading: groupLoading, setGroupId, clearGroupSelection, userGroups } = useGroup()
   const { toast } = useToast()
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [userExpenses, setUserExpenses] = useState<UserExpense[]>([])
   const [members, setMembers] = useState<User[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
@@ -26,27 +30,35 @@ export default function ExpensesPage() {
   // Use Telegram user ID when available
   const currentUserId = user?.id ? String(user.id) : ''
 
-  // Fetch group data (including members) and expenses from API on mount
+  // Fetch data based on whether we have a group selected or not
   useEffect(() => {
-    if (!groupId || groupLoading) return
+    if (groupLoading) return
 
     const abortController = new AbortController()
 
     const loadData = async () => {
       setIsLoading(true)
       try {
-        // Fetch group (with members) and expenses in parallel
-        const [groupData, expensesData] = await Promise.all([
-          api.getGroup(groupId),
-          api.getExpenses(groupId),
-        ])
-        if (!abortController.signal.aborted) {
-          setMembers(groupData.members)
-          setExpenses(expensesData)
+        if (groupId) {
+          // GROUP VIEW: Fetch group (with members) and expenses
+          const [groupData, expensesData] = await Promise.all([
+            api.getGroup(groupId),
+            api.getExpenses(groupId),
+          ])
+          if (!abortController.signal.aborted) {
+            setMembers(groupData.members)
+            setExpenses(expensesData)
+          }
+        } else {
+          // USER VIEW: Fetch all user expenses
+          const userExpensesData = await api.getUserExpenses(50)
+          if (!abortController.signal.aborted) {
+            setUserExpenses(userExpensesData)
+          }
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return
-        logger.error('Failed to load group data', { groupId }, err)
+        logger.error('Failed to load expenses data', { groupId }, err)
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false)
@@ -133,13 +145,111 @@ export default function ExpensesPage() {
     )
   }
 
-  // Show message when no group selected
+  // USER VIEW: Show all expenses grouped by group
   if (!groupId) {
+    // Group user expenses by group
+    const expensesByGroup = userExpenses.reduce((acc, expense) => {
+      if (!acc[expense.groupId]) {
+        acc[expense.groupId] = {
+          groupId: expense.groupId,
+          groupTitle: expense.groupTitle,
+          expenses: [],
+        }
+      }
+      acc[expense.groupId].expenses.push(expense)
+      return acc
+    }, {} as Record<string, { groupId: string; groupTitle: string; expenses: UserExpense[] }>)
+
+    const groupedExpenses = Object.values(expensesByGroup)
+
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
-        <Users className="h-12 w-12 text-muted-foreground" />
-        <h2 className="text-xl font-semibold">{t('expenses.noGroup.title')}</h2>
-        <p className="text-muted-foreground">{t('expenses.noGroup.description')}</p>
+      <div className="flex flex-col">
+        {/* Header */}
+        <div className="sticky top-14 z-30 space-y-4 border-b bg-background p-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold">{t('userDashboard.allExpenses')}</h1>
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={t('expenses.search')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+
+        {/* Expenses by Group */}
+        <ScrollArea className="flex-1">
+          <div className="space-y-6 p-4 pb-20">
+            {isLoading ? (
+              <div className="flex h-40 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            ) : groupedExpenses.length === 0 ? (
+              <div className="flex h-40 flex-col items-center justify-center text-center">
+                <p className="text-muted-foreground">{t('expenses.empty.title')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('expenses.empty.description')}
+                </p>
+              </div>
+            ) : (
+              groupedExpenses.map((group) => {
+                const filteredGroupExpenses = group.expenses.filter((expense) =>
+                  expense.description.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                if (filteredGroupExpenses.length === 0) return null
+
+                return (
+                  <div key={group.groupId} className="space-y-3">
+                    <button
+                      onClick={() => setGroupId(group.groupId)}
+                      className="flex items-center justify-between w-full text-left hover:bg-muted/50 rounded-lg p-2 -ml-2 transition-colors"
+                    >
+                      <h2 className="text-sm font-semibold text-muted-foreground">
+                        {group.groupTitle}
+                      </h2>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                    {filteredGroupExpenses.slice(0, 5).map((expense) => (
+                      <Card key={expense.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{expense.description}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {t('expenses.paidBy', { name: expense.payerName })}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">{formatTON(expense.amount)} {expense.currency}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {t('expenses.yourShare', { amount: formatTON(expense.yourShare) })}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {filteredGroupExpenses.length > 5 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setGroupId(group.groupId)}
+                      >
+                        {t('home.viewAll')} ({filteredGroupExpenses.length})
+                      </Button>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </ScrollArea>
       </div>
     )
   }
@@ -149,7 +259,20 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="sticky top-14 z-30 space-y-4 border-b bg-background p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">{t('expenses.title')}</h1>
+          <div>
+            {userGroups.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearGroupSelection}
+                className="-ml-2 text-muted-foreground"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {t('home.allGroups')}
+              </Button>
+            )}
+            <h1 className="text-xl font-bold">{t('expenses.title')}</h1>
+          </div>
           <AddExpenseDialog
             members={members}
             currentUserId={currentUserId}

@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, Plus, Trash2, Calendar, Clock, Users } from 'lucide-react'
+import { RefreshCw, Plus, Trash2, Calendar, Clock, Users, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
 import { useGroup } from '@/lib/group-context'
 import { api, type RecurringTemplate, type CreateRecurringInput, type User } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ import {
 export default function RecurringPage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
-  const { groupId, isLoading: groupLoading } = useGroup()
+  const { groupId, isLoading: groupLoading, setGroupId, clearGroupSelection, userGroups } = useGroup()
   const [templates, setTemplates] = useState<RecurringTemplate[]>([])
   const [members, setMembers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -94,12 +95,52 @@ export default function RecurringPage() {
     )
   }
 
+  // USER VIEW: Show group picker when no group is selected
   if (!groupId) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
-        <Users className="h-12 w-12 text-muted-foreground" />
-        <h2 className="text-xl font-semibold">{t('recurring.noGroup.title')}</h2>
-        <p className="text-muted-foreground">{t('recurring.noGroup.description')}</p>
+      <div className="space-y-6 p-4 pb-20">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold">{t('recurring.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('userDashboard.selectGroupDescription')}</p>
+        </div>
+
+        {/* Group Picker */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">{t('userDashboard.selectGroup')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {userGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {t('userDashboard.noGroups')}
+              </p>
+            ) : (
+              userGroups.map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() => setGroupId(group.id)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {group.title.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{group.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {group.memberCount} {t('userDashboard.members')}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -109,6 +150,17 @@ export default function RecurringPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          {userGroups.length > 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearGroupSelection}
+              className="-ml-2 text-muted-foreground"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              {t('home.allGroups')}
+            </Button>
+          )}
           <h1 className="text-2xl font-bold">{t('recurring.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('recurring.subtitle')}</p>
         </div>

@@ -34,6 +34,27 @@ const resources = {
       'home.noDebts': 'No debts yet',
       'home.noGroup.title': 'No Group Selected',
       'home.noGroup.description': 'Open this app from a Telegram group chat to get started',
+      'home.allGroups': 'All Groups',
+
+      // User Dashboard
+      'userDashboard.greeting': 'Hello, {{name}}!',
+      'userDashboard.subtitle': 'Your expense overview',
+      'userDashboard.totalBalance': 'Total Balance',
+      'userDashboard.acrossGroups': 'across {{count}} groups',
+      'userDashboard.yourGroups': 'Your Groups',
+      'userDashboard.joinGroup': 'Join',
+      'userDashboard.createGroup': 'Create Group',
+      'userDashboard.noGroups': "You haven't joined any groups yet",
+      'userDashboard.members': 'members',
+      'userDashboard.recentActivity': 'Recent Activity',
+      'userDashboard.noActivity': 'No recent activity',
+      'userDashboard.youOwe': 'You owe',
+      'userDashboard.owedToYou': 'Owed to you',
+      'userDashboard.allExpenses': 'All Expenses',
+      'userDashboard.allSettlements': 'All Settlements',
+      'userDashboard.selectGroup': 'Select a group',
+      'userDashboard.selectGroupDescription': 'Choose a group to add expenses',
+      'userDashboard.globalAnalytics': 'Your Analytics',
 
       // Expenses
       'expenses.title': 'Expenses',
@@ -48,6 +69,7 @@ const resources = {
       'expenses.tabs.iOwe': 'I Owe',
       'expenses.empty.title': 'No expenses found',
       'expenses.empty.description': 'Add your first expense to get started',
+      'expenses.yourShare': 'Your share: {{amount}}',
       'expenses.noGroup.title': 'No Group Selected',
       'expenses.noGroup.description': 'Open this app from a Telegram group chat to view expenses',
 
@@ -105,6 +127,10 @@ const resources = {
       'analytics.htmlReport': 'HTML Report',
       'analytics.noGroup.title': 'No Group Selected',
       'analytics.noGroup.description': 'Open this app from a Telegram group chat to view analytics',
+      'analytics.received': 'Received',
+      'analytics.groups': 'Groups',
+      'analytics.mostActive': 'Most Active Group',
+      'analytics.viewDetails': 'View details',
 
       // Recurring
       'recurring.title': 'Recurring Expenses',
@@ -205,6 +231,27 @@ const resources = {
       'home.noDebts': 'Пока нет долгов',
       'home.noGroup.title': 'Группа не выбрана',
       'home.noGroup.description': 'Откройте приложение из группового чата Telegram',
+      'home.allGroups': 'Все группы',
+
+      // User Dashboard
+      'userDashboard.greeting': 'Привет, {{name}}!',
+      'userDashboard.subtitle': 'Обзор расходов',
+      'userDashboard.totalBalance': 'Общий баланс',
+      'userDashboard.acrossGroups': 'в {{count}} группах',
+      'userDashboard.yourGroups': 'Ваши группы',
+      'userDashboard.joinGroup': 'Вступить',
+      'userDashboard.createGroup': 'Создать группу',
+      'userDashboard.noGroups': 'Вы ещё не в группах',
+      'userDashboard.members': 'участников',
+      'userDashboard.recentActivity': 'Последние операции',
+      'userDashboard.noActivity': 'Нет недавних операций',
+      'userDashboard.youOwe': 'Вы должны',
+      'userDashboard.owedToYou': 'Вам должны',
+      'userDashboard.allExpenses': 'Все расходы',
+      'userDashboard.allSettlements': 'Все расчёты',
+      'userDashboard.selectGroup': 'Выберите группу',
+      'userDashboard.selectGroupDescription': 'Выберите группу для добавления расходов',
+      'userDashboard.globalAnalytics': 'Ваша аналитика',
 
       // Expenses
       'expenses.title': 'Расходы',
@@ -219,6 +266,7 @@ const resources = {
       'expenses.tabs.iOwe': 'Я должен',
       'expenses.empty.title': 'Расходы не найдены',
       'expenses.empty.description': 'Добавьте первый расход для начала',
+      'expenses.yourShare': 'Ваша доля: {{amount}}',
       'expenses.noGroup.title': 'Группа не выбрана',
       'expenses.noGroup.description': 'Откройте приложение из группового чата Telegram',
 
@@ -276,6 +324,10 @@ const resources = {
       'analytics.htmlReport': 'HTML отчёт',
       'analytics.noGroup.title': 'Группа не выбрана',
       'analytics.noGroup.description': 'Откройте приложение из группового чата Telegram',
+      'analytics.received': 'Получено',
+      'analytics.groups': 'Групп',
+      'analytics.mostActive': 'Самая активная группа',
+      'analytics.viewDetails': 'Подробнее',
 
       // Recurring
       'recurring.title': 'Регулярные расходы',

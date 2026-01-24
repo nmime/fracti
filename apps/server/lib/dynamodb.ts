@@ -348,6 +348,21 @@ export async function getAllExpenses(groupId: string): Promise<ExpenseRecord[]> 
   return allItems
 }
 
+export async function getExpenseCount(groupId: string): Promise<number> {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: {
+        ':pk': `GROUP#${groupId}`,
+        ':sk': 'TX#',
+      },
+      Select: 'COUNT',
+    })
+  )
+  return result.Count ?? 0
+}
+
 export interface CreateExpenseInput {
   id: string
   groupId: string

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
+import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt, ChevronLeft } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
 import { useGroup } from '@/lib/group-context'
 import { type DebtGraph as DebtGraphType, type UserActivityItem, api } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 import { DebtGraph } from '@/components/DebtGraph'
+import { UserDashboard } from '@/components/UserDashboard'
 import { WalletButton } from '@/components/WalletButton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +17,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 export default function HomePage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
-  const { groupId, group, isLoading: groupLoading } = useGroup()
+  const { groupId, group, isLoading: groupLoading, clearGroupSelection } = useGroup()
   const navigate = useNavigate()
   const [debtGraph, setDebtGraph] = useState<DebtGraphType | null>(null)
   const [recentActivity, setRecentActivity] = useState<UserActivityItem[]>([])
@@ -84,13 +85,7 @@ export default function HomePage() {
   }
 
   if (!groupId || !group) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
-        <Users className="h-12 w-12 text-muted-foreground" />
-        <h2 className="text-xl font-semibold">{t('home.noGroup.title')}</h2>
-        <p className="text-muted-foreground">{t('home.noGroup.description')}</p>
-      </div>
-    )
+    return <UserDashboard />
   }
 
   return (
@@ -98,6 +93,15 @@ export default function HomePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearGroupSelection}
+            className="-ml-2 text-muted-foreground"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            {t('home.allGroups')}
+          </Button>
           <h1 className="text-2xl font-bold">
             {t('home.greeting', { name: user?.first_name ?? 'there' })}
           </h1>

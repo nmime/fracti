@@ -170,6 +170,37 @@ export function useAuth() {
 }
 
 /**
+ * Telegram Widget Login component for browser authentication
+ */
+function TelegramWidgetLogin({ onAuth }: { onAuth: (data: TelegramWidgetData) => void }) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    // Set up global callback for Telegram Widget
+    (window as unknown as Record<string, unknown>).TelegramLoginWidgetDataOnauth = (user: TelegramWidgetData) => {
+      onAuth(user)
+    }
+
+    // Create and inject widget script
+    const script = document.createElement('script')
+    script.src = 'https://telegram.org/js/telegram-widget.js?22'
+    script.setAttribute('data-telegram-login', 'FractiBot')
+    script.setAttribute('data-size', 'large')
+    script.setAttribute('data-onauth', 'TelegramLoginWidgetDataOnauth(user)')
+    script.setAttribute('data-request-access', 'write')
+    script.async = true
+
+    containerRef.current?.appendChild(script)
+
+    return () => {
+      delete (window as unknown as Record<string, unknown>).TelegramLoginWidgetDataOnauth
+    }
+  }, [onAuth])
+
+  return <div ref={containerRef} className="flex justify-center" />
+}
+
+/**
  * Higher-order component to require authentication
  * Shows an error if not authenticated
  */
@@ -180,7 +211,7 @@ export function RequireAuth({
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
-  const { isAuthenticated, isLoading, error } = useAuth()
+  const { isAuthenticated, isLoading, error, loginWithWidget } = useAuth()
 
   if (isLoading) {
     return (
@@ -198,19 +229,30 @@ export function RequireAuth({
       return <>{fallback}</>
     }
 
+    const handleWidgetAuth = async (widgetData: TelegramWidgetData) => {
+      await loginWithWidget(widgetData)
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
-          <p className="text-muted-foreground mb-4">
-            {error || 'Please open this app through Telegram to continue.'}
+          <h1 className="text-2xl font-bold mb-4">Welcome to Fracti</h1>
+          <p className="text-muted-foreground mb-6">
+            Sign in with your Telegram account to continue
           </p>
-          <a
-            href="https://t.me/FractiBot/app"
-            className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            Open in Telegram
-          </a>
+
+          {error && (
+            <p className="text-sm text-red-500 mb-4">{error}</p>
+          )}
+
+          <TelegramWidgetLogin onAuth={handleWidgetAuth} />
+
+          <p className="text-sm text-muted-foreground mt-6">
+            Or open directly in{' '}
+            <a href="https://t.me/FractiBot/app" className="text-primary hover:underline">
+              Telegram
+            </a>
+          </p>
         </div>
       </div>
     )

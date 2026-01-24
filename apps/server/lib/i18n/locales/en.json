@@ -5,7 +5,19 @@
       "privateDescription": "I help groups track and split expenses with AI-powered parsing and on-chain settlements via TON.",
       "group": "**Fracti is ready!**",
       "groupDescription": "I can now track expenses in this group. Just type naturally like \"I paid 50 for dinner\" and I'll handle the rest!",
-      "openApp": "Open Fracti"
+      "openApp": "Open Fracti",
+      "addToGroup": "Add to Group",
+      "howToUse": "How to use:",
+      "howToStep1": "1. Add me to a group chat",
+      "howToStep2": "2. Send messages like \"I paid 50 for dinner\"",
+      "howToStep3": "3. Or send receipt photos to scan",
+      "howToStep4": "4. Open the Mini App to view balances and settle up",
+      "getStarted": "Click below to get started!",
+      "quickStart": "Quick start:",
+      "quickExample": "\"I paid 50 for dinner with @alice\"",
+      "quickReceipt": "Send a receipt photo",
+      "quickBalance": "/balance - View balances",
+      "quickHelp": "/help - More commands"
     },
     "help": {
       "title": "**Fracti Commands**",
@@ -71,6 +83,23 @@
       "notInGroup": "This command only works in group chats.",
       "groupNotFound": "Group not found. Start with /start first!",
       "generic": "Something went wrong. Please try again."
+    },
+    "inline": {
+      "newExpense": "New Expense",
+      "expenseToSplit": "Expense to Split",
+      "amount": "Amount",
+      "description": "Description",
+      "group": "Group",
+      "addTo": "Add to {{group}}",
+      "shareDetails": "Share expense details",
+      "confirmPrompt": "Open the app to confirm and split this expense",
+      "addToGroupPrompt": "Add me to a group to track shared expenses!",
+      "addExpense": "Add Expense",
+      "howToUseTitle": "How to use inline mode",
+      "howToUseDescription": "Type: amount description (e.g., \"50 dinner\")",
+      "inlineModeTitle": "Fracti Inline Mode",
+      "typeExample": "Type: @{{botUsername}} 50 dinner",
+      "quickSharePrompt": "This lets you quickly share expenses in any chat!"
     }
   }
 }

@@ -10,6 +10,7 @@ interface GroupContextValue {
   isLoading: boolean
   error: string | null
   setGroupId: (id: string) => void
+  clearGroupSelection: () => void
   refreshGroups: () => Promise<UserGroup[]>
 }
 
@@ -52,13 +53,8 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
         // Fetch user's groups
         const groups = await refreshGroups()
 
-        // Determine which group to use
-        let activeGroupId = deepLink.groupId
-
-        // If no groupId from deep link, use first group
-        if (!activeGroupId && groups.length > 0) {
-          activeGroupId = groups[0].id
-        }
+        // Only use group from deep link (no auto-selection)
+        const activeGroupId = deepLink.groupId
 
         if (activeGroupId) {
           setGroupIdState(activeGroupId)
@@ -93,6 +89,12 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Clear group selection to return to user dashboard
+  const clearGroupSelection = useCallback(() => {
+    setGroupIdState(null)
+    setGroup(null)
+  }, [])
+
   const value = useMemo<GroupContextValue>(() => ({
     groupId,
     group,
@@ -100,8 +102,9 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     error,
     setGroupId,
+    clearGroupSelection,
     refreshGroups,
-  }), [groupId, group, userGroups, isLoading, error, setGroupId, refreshGroups])
+  }), [groupId, group, userGroups, isLoading, error, setGroupId, clearGroupSelection, refreshGroups])
 
   return (
     <GroupContext.Provider value={value}>

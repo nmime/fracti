@@ -5,6 +5,9 @@ import type { Env } from '../lib/factory'
 import {
   getGroupsByUser,
   getGroup,
+  getGroupMembers,
+  getExpenseCount,
+  getAllExpenses,
   getExpensesPaidByUser,
   getExpensesOwedByUser,
   getSettlementsByUser,
@@ -13,6 +16,8 @@ import {
   type ExpenseRecord,
   type SettlementRecord,
 } from '../lib/dynamodb'
+import { getAllSettlements } from '../lib/dynamodb'
+import { calculateBalances } from '../lib/debt-graph'
 import { authMiddleware, requireAuth, getCurrentUser } from '../middleware/auth'
 import {
   paginationQuerySchema,
@@ -51,6 +56,7 @@ usersRoutes.get('/me', requireAuth, async (c) => {
 // GET /api/users/me/groups - Get all groups for current user
 usersRoutes.get('/me/groups', requireAuth, async (c) => {
   const telegramUser = getCurrentUser(c)
+  const userId = String(telegramUser.id)
 
   const memberships = await getGroupsByUser(telegramUser.id)
 
@@ -58,18 +64,39 @@ usersRoutes.get('/me/groups', requireAuth, async (c) => {
   const groupIds = memberships.map((m) => m.GSI1SK?.replace('GROUP#', '')).filter(Boolean) as string[]
   const groups = await Promise.all(groupIds.map((id) => getGroup(id)))
 
+  // Fetch expense counts and balances for each group in parallel
+  const groupDataPromises = groups.filter(Boolean).map(async (g) => {
+    const groupId = g!.id
+
+    // Fetch expense count, expenses, settlements, and members in parallel
+    const [expenseCount, expenses, settlements, members] = await Promise.all([
+      getExpenseCount(groupId),
+      getAllExpenses(groupId),
+      getAllSettlements(groupId),
+      getGroupMembers(groupId),
+    ])
+
+    // Calculate balances for this group
+    const balances = calculateBalances(expenses, settlements, members)
+    const userBalance = balances.get(userId) ?? 0
+
+    return {
+      id: g!.id,
+      chatId: g!.chatId,
+      title: g!.title,
+      currency: g!.currency,
+      createdAt: g!.createdAt,
+      memberCount: g!.memberCount,
+      expenseCount,
+      balance: Math.round(userBalance * 100) / 100,
+    }
+  })
+
+  const groupData = await Promise.all(groupDataPromises)
+
   return c.json({
     success: true,
-    data: groups
-      .filter(Boolean)
-      .map((g) => ({
-        id: g!.id,
-        chatId: g!.chatId,
-        title: g!.title,
-        currency: g!.currency,
-        createdAt: g!.createdAt,
-        memberCount: g!.memberCount,
-      })),
+    data: groupData,
   })
 })
 
