@@ -12,7 +12,7 @@ import {
   getGroup,
   getGroupMembers,
 } from '../lib/dynamodb'
-import { authMiddleware, requireAuth, getDevUser } from '../middleware/auth'
+import { authMiddleware, requireAuth, getCurrentUser } from '../middleware/auth'
 import {
   groupIdParamSchema,
   expenseIdParamSchema,
@@ -34,7 +34,7 @@ expensesRoutes.get(
   zValidator('param', groupIdParamSchema),
   zValidator('query', paginationQuerySchema),
   async (c) => {
-    const telegramUser = c.get('telegramUser') || getDevUser()
+    const telegramUser = getCurrentUser(c)
     const { groupId } = c.req.valid('param')
     const { limit, cursor } = c.req.valid('query')
 
@@ -153,7 +153,7 @@ expensesRoutes.get(
   requireAuth,
   zValidator('param', expenseIdParamSchema),
   async (c) => {
-    const telegramUser = c.get('telegramUser') || getDevUser()
+    const telegramUser = getCurrentUser(c)
     const { groupId, expenseId } = c.req.valid('param')
 
     // Use GSI2 for O(1) lookup by expense ID
@@ -200,7 +200,7 @@ expensesRoutes.delete(
   requireAuth,
   zValidator('param', expenseIdParamSchema),
   async (c) => {
-    const telegramUser = c.get('telegramUser') || getDevUser()
+    const telegramUser = getCurrentUser(c)
     const { groupId, expenseId } = c.req.valid('param')
 
     // Use GSI2 for O(1) lookup by expense ID

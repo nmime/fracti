@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { api, type AuthUser, type TelegramWidgetData } from './api'
 import { useTelegram } from './telegram'
-import { isProduction } from './config'
 import { logger } from './logger'
 
 interface AuthContextValue {
@@ -10,7 +9,7 @@ interface AuthContextValue {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
-  authMethod: 'init_data' | 'widget' | 'dev' | null
+  authMethod: 'init_data' | 'widget' | null
 
   // Actions
   refreshAuth: () => Promise<void>
@@ -28,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [authMethod, setAuthMethod] = useState<'init_data' | 'widget' | 'dev' | null>(null)
+  const [authMethod, setAuthMethod] = useState<'init_data' | 'widget' | null>(null)
 
   // Initialize API client with Telegram initData when available
   useEffect(() => {
@@ -52,64 +51,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null)
 
       try {
-        // If we have initData, we should be authenticated
+        // If we have initData and are in Telegram, verify auth with backend
         if (telegram.initData && telegram.isTelegram) {
-          // Verify auth with backend
           const response = await api.verifyAuth()
-
-          // In production, don't accept dev auth
-          if (isProduction && response.authMethod === 'dev') {
-            setError('Development mode authentication not allowed in production')
-            setIsAuthenticated(false)
-            setUser(null)
-            setAuthMethod(null)
-          } else {
-            setUser(response.user)
-            setIsAuthenticated(true)
-            setAuthMethod(response.authMethod)
-            logger.info('Auth verified successfully', {
-              userId: response.user.id,
-              authMethod: response.authMethod,
-            })
-          }
-        } else if (!telegram.isTelegram) {
-          // Not in Telegram - check if we have valid auth from headers/session
-          // In development, this will return the dev user
-          try {
-            const status = await api.getAuthStatus()
-
-            if (status.authenticated && (!isProduction || status.authMethod !== 'dev')) {
-              const response = await api.verifyAuth()
-              setUser(response.user)
-              setIsAuthenticated(true)
-              setAuthMethod(response.authMethod)
-              logger.info('Existing auth session found', {
-                userId: response.user.id,
-                authMethod: response.authMethod,
-              })
-            } else if (!isProduction && status.devModeEnabled) {
-              // Development mode - get dev user
-              const response = await api.verifyAuth()
-              setUser(response.user)
-              setIsAuthenticated(true)
-              setAuthMethod('dev')
-              logger.info('Dev mode auth enabled', { userId: response.user.id })
-            } else {
-              // No valid auth
-              setIsAuthenticated(false)
-              setUser(null)
-              setAuthMethod(null)
-            }
-          } catch (err) {
-            // Auth check failed - user is not authenticated
-            logger.debug('Auth status check failed', { error: err })
-            setIsAuthenticated(false)
-            setUser(null)
-            setAuthMethod(null)
-          }
+          setUser(response.user)
+          setIsAuthenticated(true)
+          setAuthMethod(response.authMethod as 'init_data' | 'widget')
+          logger.info('Auth verified successfully', {
+            userId: response.user.id,
+            authMethod: response.authMethod,
+          })
         } else {
-          // In Telegram but no initData - shouldn't happen
-          logger.warn('In Telegram context but no initData available')
+          // Not in Telegram context - no authentication
           setIsAuthenticated(false)
           setUser(null)
           setAuthMethod(null)
@@ -136,14 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const response = await api.verifyAuth()
-
-      if (isProduction && response.authMethod === 'dev') {
-        throw new Error('Development mode authentication not allowed in production')
-      }
-
       setUser(response.user)
       setIsAuthenticated(true)
-      setAuthMethod(response.authMethod)
+      setAuthMethod(response.authMethod as 'init_data' | 'widget')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Authentication failed'
       setError(message)
@@ -223,7 +171,7 @@ export function useAuth() {
 
 /**
  * Higher-order component to require authentication
- * Redirects to a login page or shows an error if not authenticated
+ * Shows an error if not authenticated
  */
 export function RequireAuth({
   children,

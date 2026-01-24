@@ -7,7 +7,6 @@ import { validateInitData, validateWidgetData } from '../lib/telegram'
 import { authMiddleware, requireAuth, getCurrentUser } from '../middleware/auth'
 import { getGroupsByUser } from '../lib/dynamodb'
 import { logger } from '../lib/logger'
-import { isProduction, isLocalDev } from '../lib/config'
 
 export const authRoutes = new Hono<Env>()
 
@@ -28,14 +27,14 @@ const initDataSchema = z.object({
 })
 
 /**
- * POST /api/auth/telegram - Validate Telegram Login Widget data
+ * POST /api/auth/telegram-widget - Validate Telegram Login Widget data
  *
- * This endpoint validates the hash from Telegram Login Widget and returns
- * the authenticated user if valid. Used for web-based login flows outside
- * the Telegram Mini App context.
+ * This endpoint validates the hash from Telegram Login Widget using HMAC-SHA256
+ * and returns the authenticated user if valid. Used for web-based login flows
+ * outside the Telegram Mini App context.
  */
 authRoutes.post(
-  '/telegram',
+  '/telegram-widget',
   zValidator('json', telegramWidgetSchema),
   async (c) => {
     const data = c.req.valid('json')
@@ -96,13 +95,13 @@ authRoutes.post(
 )
 
 /**
- * POST /api/auth/init - Validate Telegram Mini App init data
+ * POST /api/auth/telegram-mini-app - Validate Telegram Mini App init data
  *
  * This endpoint validates the init data from Telegram Mini App WebApp.initData
- * and returns the authenticated user if valid.
+ * using @grammyjs/validator and returns the authenticated user if valid.
  */
 authRoutes.post(
-  '/init',
+  '/telegram-mini-app',
   zValidator('json', initDataSchema),
   async (c) => {
     const { initData } = c.req.valid('json')
@@ -110,7 +109,7 @@ authRoutes.post(
     const user = validateInitData(initData)
 
     if (!user) {
-      logger.warn('Telegram init data auth failed', {
+      logger.warn('Telegram mini app auth failed', {
         reason: 'Invalid init data',
       })
 
@@ -124,7 +123,7 @@ authRoutes.post(
       )
     }
 
-    logger.info('Telegram init data auth successful', {
+    logger.info('Telegram mini app auth successful', {
       userId: user.id,
       username: user.username,
       method: 'init_data',
@@ -192,19 +191,6 @@ authRoutes.get('/verify', authMiddleware, async (c) => {
   const isAuthenticated = c.get('isAuthenticated')
   const authMethod = c.get('authMethod')
 
-  // In production, only real auth is valid
-  if (isProduction && authMethod === 'dev') {
-    return c.json(
-      {
-        success: false,
-        error: 'Authentication required',
-        message: 'Development mode authentication is not allowed in production.',
-        authenticated: false,
-      },
-      401
-    )
-  }
-
   if (!isAuthenticated || !telegramUser) {
     return c.json(
       {
@@ -239,17 +225,12 @@ authRoutes.get('/status', authMiddleware, async (c) => {
   const isAuthenticated = c.get('isAuthenticated')
   const authMethod = c.get('authMethod')
 
-  // In production, dev auth is not considered valid
-  const isValidAuth = isAuthenticated && (isProduction ? authMethod !== 'dev' : true)
-
   return c.json({
     success: true,
     data: {
-      authenticated: isValidAuth,
-      authMethod: isValidAuth ? authMethod : null,
-      userId: isValidAuth && telegramUser ? telegramUser.id : null,
-      environment: isProduction ? 'production' : 'development',
-      devModeEnabled: isLocalDev,
+      authenticated: isAuthenticated,
+      authMethod: isAuthenticated ? authMethod : null,
+      userId: isAuthenticated && telegramUser ? telegramUser.id : null,
     },
   })
 })

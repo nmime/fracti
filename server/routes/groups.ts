@@ -12,7 +12,7 @@ import {
   getGroupMembers,
 } from '../lib/dynamodb'
 import { transformAvatarUrl } from '../lib/s3'
-import { authMiddleware, requireAuth, getDevUser } from '../middleware/auth'
+import { authMiddleware, requireAuth, getCurrentUser } from '../middleware/auth'
 import {
   groupIdParamSchema,
   createGroupSchema,
@@ -27,7 +27,7 @@ groupsRoutes.use('*', authMiddleware)
 
 // GET /api/groups - List groups for current user
 groupsRoutes.get('/', requireAuth, async (c) => {
-  const telegramUser = c.get('telegramUser') || getDevUser()
+  const telegramUser = getCurrentUser(c)
   const memberships = await getGroupsByUser(telegramUser.id)
 
   // Extract group IDs from memberships and fetch full group details
@@ -90,7 +90,7 @@ groupsRoutes.post(
   requireAuth,
   zValidator('json', createGroupSchema),
   async (c) => {
-    const telegramUser = c.get('telegramUser') || getDevUser()
+    const telegramUser = getCurrentUser(c)
     const { title, chatId } = c.req.valid('json')
 
     const id = randomUUID()
@@ -123,7 +123,7 @@ groupsRoutes.post(
   zValidator('param', groupIdParamSchema),
   zValidator('json', joinGroupSchema),
   async (c) => {
-    const telegramUser = c.get('telegramUser') || getDevUser()
+    const telegramUser = getCurrentUser(c)
     const { groupId } = c.req.valid('param')
     const { wallet } = c.req.valid('json')
 
@@ -151,7 +151,7 @@ groupsRoutes.put(
   zValidator('param', groupIdParamSchema),
   zValidator('json', updateWalletSchema),
   async (c) => {
-    const telegramUser = c.get('telegramUser') || getDevUser()
+    const telegramUser = getCurrentUser(c)
     const { groupId } = c.req.valid('param')
     const { wallet } = c.req.valid('json')
 

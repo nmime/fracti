@@ -333,14 +333,14 @@ class ApiClient {
   }
 
   async authWithInitData(initData: string): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/auth/init', {
+    return this.request<AuthResponse>('/auth/telegram-mini-app', {
       method: 'POST',
       body: { initData },
     })
   }
 
   async authWithWidget(widgetData: TelegramWidgetData): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/auth/telegram', {
+    return this.request<AuthResponse>('/auth/telegram-widget', {
       method: 'POST',
       body: widgetData,
     })

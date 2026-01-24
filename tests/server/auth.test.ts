@@ -61,21 +61,9 @@ vi.mock('@server/lib/telegram', () => ({
   }),
 }))
 
-import { authMiddleware, requireAuth, getCurrentUser, getDevUser } from '@server/middleware/auth'
+import { authMiddleware, requireAuth, getCurrentUser } from '@server/middleware/auth'
 
 describe('Auth Middleware', () => {
-  describe('getDevUser', () => {
-    it('should return a demo user object', () => {
-      const user = getDevUser()
-
-      expect(user).toBeDefined()
-      expect(user.id).toBe(123456789)
-      expect(user.first_name).toBe('Demo')
-      expect(user.last_name).toBe('User')
-      expect(user.username).toBe('demouser')
-    })
-  })
-
   describe('authMiddleware', () => {
     it('should set user context when valid init data is provided', async () => {
       const app = new Hono()
@@ -130,7 +118,7 @@ describe('Auth Middleware', () => {
       expect(json.user.username).toBe('widgetuser')
     })
 
-    it('should set null user for invalid init data in test mode', async () => {
+    it('should set null user for invalid init data', async () => {
       const app = new Hono()
       app.use('*', authMiddleware)
       app.get('/test', (c) => {
@@ -147,8 +135,8 @@ describe('Auth Middleware', () => {
 
       expect(res.status).toBe(200)
       const json = await res.json()
-      // In test mode (not local dev), invalid data should result in null user
       expect(json.isAuth).toBe(false)
+      expect(json.user).toBeNull()
     })
 
     it('should allow request to continue without auth header', async () => {
@@ -252,17 +240,23 @@ describe('Auth Middleware', () => {
       expect(json.user.username).toBe('testuser')
     })
 
-    it('should return dev user when no user in context', async () => {
+    it('should throw error when no user in context', async () => {
       const app = new Hono()
       app.get('/test', (c) => {
-        const user = getCurrentUser(c)
-        return c.json({ user })
+        // This should throw an error since no user is authenticated
+        try {
+          const user = getCurrentUser(c)
+          return c.json({ user })
+        } catch (error) {
+          return c.json({ error: (error as Error).message }, 500)
+        }
       })
 
       const res = await app.request('/test')
 
+      expect(res.status).toBe(500)
       const json = await res.json()
-      expect(json.user.username).toBe('demouser')
+      expect(json.error).toContain('No authenticated user')
     })
   })
 })

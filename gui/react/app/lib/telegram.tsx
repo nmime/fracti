@@ -1,17 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import WebApp from '@twa-dev/sdk'
 import type { TelegramUser, TelegramTheme, DeepLinkParams } from '@core/types'
-import { isProduction, isDevelopment } from './config'
-
-// Demo user for development outside Telegram
-// WARNING: Only used in development mode, never in production
-const demoUser: TelegramUser = {
-  id: 123456789,
-  first_name: 'Demo',
-  last_name: 'User',
-  username: 'demo_user',
-  language_code: 'en',
-}
 
 const defaultTheme: TelegramTheme = {
   colorScheme: 'light',
@@ -83,12 +72,10 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
 
   const isTelegram = typeof window !== 'undefined' && !!WebApp.initData
 
-  // Extract user from init data
+  // Extract user from init data - no fallback, must be authenticated via Telegram
   const user = useMemo<TelegramUser | null>(() => {
-    // In production, only real Telegram users are allowed
-    // In development, use demo user when not in Telegram context
     if (!isTelegram) {
-      return isDevelopment ? demoUser : null
+      return null
     }
 
     const u = WebApp.initDataUnsafe?.user
