@@ -1,53 +1,32 @@
 import type { Context, Next } from 'hono'
 import { validateInitData, validateWidgetData, type TelegramUser } from '../lib/telegram'
-import { isLocalDev } from '../lib/config'
 import { logger } from '../lib/logger'
-
-// Track if we've already logged the dev mode warning (avoid spam)
-let devModeWarningLogged = false
 
 // Extend Hono context with user
 declare module 'hono' {
   interface ContextVariableMap {
     telegramUser: TelegramUser | null
     isAuthenticated: boolean
-    authMethod: 'init_data' | 'widget' | 'dev' | null
-  }
-}
-
-/**
- * Development mode demo user
- */
-export function getDevUser(): TelegramUser {
-  return {
-    id: 123456789,
-    first_name: 'Demo',
-    last_name: 'User',
-    username: 'demouser',
-    language_code: 'en',
+    authMethod: 'init_data' | 'widget' | null
   }
 }
 
 type AuthResult = {
   user: TelegramUser | null
-  method: 'init_data' | 'widget' | 'dev' | null
+  method: 'init_data' | 'widget' | null
 }
 
 /**
  * Extract Telegram user from request headers/params
- * Shared logic between auth middleware variants
+ * Validates using cryptographic verification - no mocks or fallbacks
  */
 async function extractTelegramUser(c: Context): Promise<AuthResult> {
-  let user: TelegramUser | null = null
-  let method: AuthResult['method'] = null
-
   // Try Mini App init data first (most common for Telegram Mini Apps)
   const initData = c.req.header('x-telegram-init-data') || ''
   if (initData) {
-    user = validateInitData(initData)
+    const user = validateInitData(initData)
     if (user) {
-      method = 'init_data'
-      return { user, method }
+      return { user, method: 'init_data' }
     }
   }
 
@@ -56,10 +35,9 @@ async function extractTelegramUser(c: Context): Promise<AuthResult> {
   if (widgetDataHeader) {
     try {
       const widgetData = JSON.parse(widgetDataHeader)
-      user = validateWidgetData(widgetData)
+      const user = validateWidgetData(widgetData)
       if (user) {
-        method = 'widget'
-        return { user, method }
+        return { user, method: 'widget' }
       }
     } catch (error) {
       logger.debug('Invalid JSON in widget data header', { error })
@@ -75,28 +53,16 @@ async function extractTelegramUser(c: Context): Promise<AuthResult> {
     })
 
     if (params.hash && params.id && params.auth_date) {
-      user = validateWidgetData(params)
+      const user = validateWidgetData(params)
       if (user) {
-        method = 'widget'
-        return { user, method }
+        return { user, method: 'widget' }
       }
     }
   } catch (error) {
     logger.debug('URL parsing failed for widget data', { url: c.req.url, error })
   }
 
-  // Development mode: return demo user
-  // WARNING: This bypasses authentication - only enabled when NODE_ENV=development or AWS_SAM_LOCAL=true
-  if (isLocalDev) {
-    if (!devModeWarningLogged) {
-      logger.warn('Development mode auth bypass is active - using demo user for unauthenticated requests', {
-        reason: 'No valid Telegram credentials provided in development mode',
-      })
-      devModeWarningLogged = true
-    }
-    return { user: getDevUser(), method: 'dev' }
-  }
-
+  // No valid authentication found
   return { user: null, method: null }
 }
 
@@ -104,10 +70,9 @@ async function extractTelegramUser(c: Context): Promise<AuthResult> {
  * Auth middleware - validates Telegram init data or widget data and sets user context
  * Does NOT reject unauthenticated requests - use requireAuth for that
  *
- * Supports multiple authentication methods:
+ * Supports authentication methods:
  * 1. Mini App init data (X-Telegram-Init-Data header)
  * 2. Telegram Login Widget (query params or X-Telegram-Widget-Data header)
- * 3. Development mode bypass (returns demo user)
  */
 export async function authMiddleware(c: Context, next: Next) {
   const { user, method } = await extractTelegramUser(c)
@@ -145,9 +110,16 @@ export async function requireAuth(c: Context, next: Next) {
 }
 
 /**
- * Get the current user from context, or dev user if in development
- * Useful for routes that use authMiddleware but need a user object
+ * Get the current user from context
+ * Throws if no authenticated user - always use with requireAuth middleware
  */
 export function getCurrentUser(c: Context): TelegramUser {
-  return c.get('telegramUser') ?? getDevUser()
+  const user = c.get('telegramUser')
+
+  if (!user) {
+    logger.error('getCurrentUser called without authenticated user')
+    throw new Error('No authenticated user - ensure requireAuth middleware is used')
+  }
+
+  return user
 }

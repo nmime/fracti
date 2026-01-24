@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import WebApp from '@twa-dev/sdk'
-import { demoUser } from '@/lib/fixtures'
 import { logger } from '@/lib/logger'
 
 // Extend Window interface for Telegram WebApp
@@ -116,16 +115,9 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isTelegram) {
       setIsReady(true)
-      // Use demo user for development (when not running in Telegram)
-      setUser(demoUser)
-
-      // Check URL params for development deep linking
-      const urlParams = new URLSearchParams(window.location.search)
-      const devStartParam = urlParams.get('startapp')
-      if (devStartParam) {
-        setStartParam(devStartParam)
-        setDeepLink(parseDeepLink(devStartParam))
-      }
+      // No fallback - user must authenticate via Telegram
+      setUser(null)
+      logger.warn('Not in Telegram context - authentication required')
       return
     }
 

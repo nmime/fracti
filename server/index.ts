@@ -22,6 +22,7 @@ import { recurringRoutes } from './routes/recurring'
 import { aiRoutes } from './routes/ai'
 import { webhooksRoutes } from './routes/webhooks'
 import { currencyRoutes } from './routes/currency'
+import { authRoutes } from './routes/auth'
 
 // Create main Hono app with typed environment
 const app = new Hono<Env>()
@@ -169,6 +170,10 @@ app.route('/api/ai', aiRoutes)
 // Currency API - standard rate limit
 app.use('/api/currency/*', standardRateLimit)
 app.route('/api/currency', currencyRoutes)
+
+// Auth API - standard rate limit
+app.use('/api/auth/*', standardRateLimit)
+app.route('/api/auth', authRoutes)
 
 // Webhooks (Telegram bot) - higher rate limit
 app.use('/api/webhooks/*', webhookRateLimit)

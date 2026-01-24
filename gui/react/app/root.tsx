@@ -10,6 +10,7 @@ import type { Route } from "./+types/root"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary"
 import { TelegramProvider } from "@/lib/telegram"
+import { AuthProvider } from "@/lib/auth"
 import { GroupProvider } from "@/lib/group-context"
 import { ClientOnly } from "@/components/ClientOnly"
 // TonConnect is loaded only on client via .client.tsx file
@@ -69,15 +70,17 @@ function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <TelegramProvider>
-      <GroupProvider>
-        <ClientOnly fallback={content}>
-          {TonConnectProvider ? (
-            <TonConnectProvider>{content}</TonConnectProvider>
-          ) : (
-            content
-          )}
-        </ClientOnly>
-      </GroupProvider>
+      <AuthProvider>
+        <GroupProvider>
+          <ClientOnly fallback={content}>
+            {TonConnectProvider ? (
+              <TonConnectProvider>{content}</TonConnectProvider>
+            ) : (
+              content
+            )}
+          </ClientOnly>
+        </GroupProvider>
+      </AuthProvider>
     </TelegramProvider>
   )
 }
