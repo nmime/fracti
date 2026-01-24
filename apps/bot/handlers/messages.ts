@@ -1,23 +1,27 @@
 import type { Bot, Context } from 'grammy'
 import { InlineKeyboard } from 'grammy'
-import { randomUUID } from 'crypto'
-import {
-  getGroup,
-  createGroup,
-  createExpense,
-  getGroupMembers,
-} from '@core/db'
 import { extractJSON } from '@core/tools'
+import { getGroup, createGroup, getGroupMembers } from '@core/db'
 import { getTranslator } from '../i18n'
-import { getMiniAppUrl, isWebAppUrl } from '../lib/config'
-import { getChatTitle, registerUserWithAvatar } from '../lib/helpers'
-import { downloadFile } from '../middleware'
+import { getMiniAppUrl, isWebAppUrl } from '../config'
+import { downloadFile } from '../integrations/telegram'
+import { invokeClaudeText, invokeClaudeVision } from '../integrations/bedrock'
 import {
-  invokeClaudeText,
-  invokeClaudeVision,
   PARSER_SYSTEM_PROMPT,
   VISION_SYSTEM_PROMPT,
-} from '../ai'
+} from '../services/ai.service'
+import {
+  getChatTitle,
+  registerUserWithAvatar,
+} from '../services/user.service'
+import {
+  createExpenseFromParsed,
+  findPayerFromMembers,
+} from '../services/expense.service'
+
+/**
+ * Message handlers for the Telegram bot
+ */
 
 // Helper to create a Mini App button with the correct type
 function addMiniAppButton(keyboard: InlineKeyboard, text: string, url: string = getMiniAppUrl()): InlineKeyboard {
@@ -52,55 +56,25 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
 
     if (!parsed || !parsed.amount || parsed.amount <= 0 || (parsed.confidence ?? 0) < 0.5) return
 
-    const expenseAmount = parsed.amount
     const members = await getGroupMembers(groupId)
-    const memberMap = new Map(members.map((m) => [m.username?.toLowerCase(), m]))
+    const { payerId, payerName } = findPayerFromMembers(
+      parsed.payer,
+      members,
+      String(user.id),
+      user.first_name
+    )
 
-    let payerId = String(user.id)
-    let payerName = user.first_name
-
-    if (parsed.payer) {
-      const payerMember = memberMap.get(parsed.payer.toLowerCase().replace('@', ''))
-      if (payerMember) {
-        payerId = payerMember.id
-        payerName = payerMember.name
-      }
-    }
-
-    let splits = members.map((m) => ({
-      userId: m.id,
-      userName: m.name,
-      amount: expenseAmount / members.length,
-    }))
-
-    if (parsed.beneficiaries?.length) {
-      const beneficiaryIds = new Set<string>([payerId])
-      for (const name of parsed.beneficiaries) {
-        const member = memberMap.get(name.toLowerCase().replace('@', ''))
-        if (member) beneficiaryIds.add(member.id)
-      }
-      const splitAmount = expenseAmount / beneficiaryIds.size
-      splits = Array.from(beneficiaryIds).map((id) => {
-        const member = members.find((m) => m.id === id)
-        return { userId: id, userName: member?.name || 'Unknown', amount: splitAmount }
-      })
-    }
-
-    await createExpense({
-      id: randomUUID(),
+    const { splits } = await createExpenseFromParsed({
       groupId,
-      groupTitle: group.title,
+      group,
       payerId,
       payerName,
-      amount: expenseAmount,
-      currency: group.currency,
+      amount: parsed.amount,
       description: parsed.description || 'Expense',
-      splitType: 'equal',
-      splits,
-      createdAt: new Date().toISOString(),
+      beneficiaries: parsed.beneficiaries,
     })
 
-    const eachAmount = (expenseAmount / splits.length).toFixed(2)
+    const eachAmount = (parsed.amount / splits.length).toFixed(2)
     const splitText = splits.length > 1
       ? t('bot.expense.splitWays', { count: splits.length, each: eachAmount })
       : ''
@@ -110,7 +84,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
     const description = parsed.description || 'Expense'
 
     await ctx.reply(
-      `✅ ${t('bot.expense.created', { description, amount: expenseAmount })}\n` +
+      `✅ ${t('bot.expense.created', { description, amount: parsed.amount })}\n` +
         `${t('bot.expense.paidBy', { name: payerName })}\n${splitText}`,
       {
         parse_mode: 'HTML',

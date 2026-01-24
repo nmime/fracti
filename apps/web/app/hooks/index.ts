@@ -1,6 +1,5 @@
 /**
- * Legacy re-export for backward compatibility
- * New code should import from @/hooks
+ * Hooks exports
  */
 export {
   useTonPayment,
@@ -13,4 +12,4 @@ export {
   USDT_DECIMALS,
   JETTON_ADDRESSES,
   type JettonType,
-} from '../hooks/use-ton-payment'
+} from './use-ton-payment'
