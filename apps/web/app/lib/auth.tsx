@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Wallet, Users, Receipt, Sparkles } from 'lucide-react'
 import { api, type AuthUser, type TelegramWidgetData } from './api'
 import { useTelegram } from './telegram'
 import { logger } from './logger'
@@ -202,7 +204,7 @@ function TelegramWidgetLogin({ onAuth }: { onAuth: (data: TelegramWidgetData) =>
 
 /**
  * Higher-order component to require authentication
- * Shows an error if not authenticated
+ * Shows a polished welcome screen for browser users
  */
 export function RequireAuth({
   children,
@@ -211,14 +213,18 @@ export function RequireAuth({
   children: React.ReactNode
   fallback?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   const { isAuthenticated, isLoading, error, loginWithWidget } = useAuth()
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Authenticating...</p>
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary mx-auto mb-4">
+            <span className="text-2xl font-bold text-primary-foreground">F</span>
+          </div>
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent mx-auto mb-3" />
+          <p className="text-muted-foreground">{t('auth.authenticating')}</p>
         </div>
       </div>
     )
@@ -234,24 +240,83 @@ export function RequireAuth({
     }
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold mb-4">Welcome to Fracti</h1>
-          <p className="text-muted-foreground mb-6">
-            Sign in with your Telegram account to continue
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-muted/30">
+        {/* Hero Section */}
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+          {/* Logo */}
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary mb-6 shadow-lg">
+            <span className="text-3xl font-bold text-primary-foreground">F</span>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-3xl font-bold mb-2">{t('auth.welcome')}</h1>
+          <p className="text-muted-foreground text-center max-w-sm mb-8">
+            {t('auth.subtitle')}
           </p>
 
+          {/* Features */}
+          <div className="grid grid-cols-2 gap-4 mb-8 w-full max-w-sm">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <div className="rounded-lg bg-blue-100 dark:bg-blue-900 p-2">
+                <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-sm font-medium">{t('auth.feature.track')}</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <div className="rounded-lg bg-green-100 dark:bg-green-900 p-2">
+                <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <span className="text-sm font-medium">{t('auth.feature.split')}</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <div className="rounded-lg bg-purple-100 dark:bg-purple-900 p-2">
+                <Wallet className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-sm font-medium">{t('auth.feature.settle')}</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <div className="rounded-lg bg-orange-100 dark:bg-orange-900 p-2">
+                <Sparkles className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <span className="text-sm font-medium">{t('auth.feature.ai')}</span>
+            </div>
+          </div>
+
+          {/* Error */}
           {error && (
-            <p className="text-sm text-red-500 mb-4">{error}</p>
+            <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 w-full max-w-sm">
+              <p className="text-sm text-red-600 dark:text-red-400 text-center">{error}</p>
+            </div>
           )}
 
-          <TelegramWidgetLogin onAuth={handleWidgetAuth} />
+          {/* Login Widget */}
+          <div className="w-full max-w-sm">
+            <TelegramWidgetLogin onAuth={handleWidgetAuth} />
+          </div>
 
-          <p className="text-sm text-muted-foreground mt-6">
-            Or open directly in{' '}
-            <a href="https://t.me/FractiBot/app" className="text-primary hover:underline">
-              Telegram
-            </a>
+          {/* Divider */}
+          <div className="flex items-center gap-4 my-6 w-full max-w-sm">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">{t('auth.or')}</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Telegram App Link */}
+          <a
+            href="https://t.me/FractiBot/app"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+          >
+            <svg className="h-5 w-5 text-[#0088cc]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+            </svg>
+            <span className="font-medium">{t('auth.openInTelegram')}</span>
+          </a>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 text-center">
+          <p className="text-xs text-muted-foreground">
+            {t('auth.footer')}
           </p>
         </div>
       </div>
