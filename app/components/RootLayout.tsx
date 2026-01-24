@@ -4,6 +4,7 @@ import { Home, Receipt, Wallet, Camera, BarChart3, RefreshCw, MoreHorizontal, X 
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useTelegram } from '@/lib/telegram'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 const mainNavItems = [
   { path: '/', icon: Home, labelKey: 'nav.home' },
@@ -49,6 +50,7 @@ export default function RootLayout() {
             <span className="font-semibold">Fracti</span>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <button
               onClick={() => navigate('/analytics')}
               className={cn(
