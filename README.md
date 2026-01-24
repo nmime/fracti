@@ -162,25 +162,26 @@ One transaction instead of three!
 
 ### Frontend
 - **React 19** + **React Router 7** - Modern React with file-based routing
-- **Vite 6** - Fast build tool with HMR
-- **Tailwind CSS** + **shadcn/ui** - Beautiful, accessible components
+- **Vite 7** - Fast build tool with HMR
+- **Tailwind CSS 4** + **shadcn/ui** - Beautiful, accessible components
 - **react-force-graph-2d** - Interactive debt visualization
 - **@twa-dev/sdk** - Official Telegram Mini App SDK
 - **@tonconnect/ui-react** - TON wallet integration
 - **i18next** - Internationalization (EN, RU)
+- **TanStack Query** - Server state management
 
 ### Backend
 - **Hono** - Lightweight, fast web framework
 - **Grammy** - Telegram Bot framework
-- **AWS Lambda** - Serverless compute (Node.js 20, ARM64)
+- **AWS Lambda** - Serverless compute (Node.js 22, ARM64)
 - **Amazon API Gateway** - HTTP API with CORS
-- **Amazon DynamoDB** - Single-table design with GSI
+- **Amazon DynamoDB** - Single-table design with 3 GSIs
 - **Amazon S3** - Avatar storage with public read
-- **AWS SAM** - Infrastructure as Code
+- **AWS CDK** - Infrastructure as Code
 
 ### AI
 - **Amazon Bedrock** - Managed AI service
-- **Claude 3.5 Sonnet** - Text parsing and vision
+- **Claude Sonnet 4** - Text parsing and vision
 - **Custom prompts** - Optimized for expense extraction
 
 ### Blockchain
@@ -214,17 +215,21 @@ One transaction instead of three!
 
 ## Database Schema
 
-Single-table design with two Global Secondary Indexes:
+Single-table design with three Global Secondary Indexes:
 
-| PK | SK | GSI1PK | GSI1SK | GSI2PK | Description |
-|---|---|---|---|---|---|
-| `GROUP#<id>` | `METADATA` | - | - | - | Group info |
-| `GROUP#<id>` | `USER#<tgId>` | `USER#<tgId>` | `GROUP#<id>` | - | Member with avatar |
-| `GROUP#<id>` | `TX#<ts>` | - | - | `EXPENSE#<id>` | Expense record |
-| `GROUP#<id>` | `SETTLE#<ts>` | - | - | `SETTLEMENT#<id>` | Settlement record |
+| PK | SK | GSI1PK | GSI1SK | GSI2PK | GSI3PK | Description |
+|---|---|---|---|---|---|---|
+| `GROUP#<id>` | `METADATA` | - | - | - | - | Group info |
+| `GROUP#<id>` | `USER#<tgId>` | `USER#<tgId>` | `GROUP#<id>` | - | - | Member with avatar |
+| `GROUP#<id>` | `TX#<ts>` | - | - | `EXPENSE#<id>` | `USER#<payerId>` | Expense record |
+| `GROUP#<id>` | `SETTLE#<ts>` | - | - | `SETTLEMENT#<id>` | `USER#<fromId>` | Settlement record |
+| `GROUP#<id>` | `PART#<expId>#<userId>` | `USER#<userId>` | `OWES#<ts>` | - | - | Expense participant |
 
-- **GSI1**: Find all groups for a user
+- **GSI1**: Find all groups for a user, find expenses user owes
 - **GSI2**: O(1) lookup by expense/settlement ID
+- **GSI3**: User activity timeline (expenses paid, settlements made)
+
+See **[docs/DATABASE_SCHEMA.md](./docs/DATABASE_SCHEMA.md)** for complete schema documentation.
 
 ## API Endpoints
 
@@ -274,9 +279,9 @@ See **[docs/SETUP_GUIDE.md](./docs/SETUP_GUIDE.md)** for complete instructions i
 
 - AWS account creation from zero
 - IAM user setup with correct permissions
-- Installing Node.js, AWS CLI, SAM CLI
+- Installing Node.js 22+, pnpm, AWS CLI, AWS CDK
 - Creating Telegram bot with @BotFather
-- Deploying to AWS with SAM
+- Deploying to AWS with CDK
 - Configuring Telegram webhook
 - Enabling Bedrock model access
 - Local development setup
@@ -288,49 +293,50 @@ See **[docs/SETUP_GUIDE.md](./docs/SETUP_GUIDE.md)** for complete instructions i
 # Clone and install
 git clone https://github.com/yourusername/fracti.git
 cd fracti
-npm install
+pnpm install
 
-# Deploy
-npm run sam:build
-npm run sam:deploy:guided
+# Interactive setup (configures .env and deploys)
+pnpm setup
 
-# Set webhook
-export TELEGRAM_BOT_TOKEN=your_token
-npm run webhook:set
+# Or manual deployment
+pnpm cdk:bootstrap    # First time only
+pnpm cdk:deploy       # Deploy all stacks
 ```
 
 ## Project Structure
 
 ```
-fracti/
-├── app/                      # React Frontend
+fracti/                       # pnpm Monorepo
+├── app/                      # Legacy React components (shared)
 │   ├── components/           # UI Components
-│   │   ├── ui/               # shadcn/ui base components
-│   │   ├── DebtGraph.tsx     # Force graph visualization
-│   │   ├── ExpenseCard.tsx   # Expense display card
-│   │   └── WalletButton.tsx  # TON Connect button
+│   │   └── ui/               # shadcn/ui base components
 │   ├── routes/               # Page routes
-│   │   ├── home.tsx          # Dashboard with debt graph
-│   │   ├── expenses.tsx      # Expense list + add
-│   │   ├── settle.tsx        # Settlements + pay
-│   │   └── scan.tsx          # Receipt scanner
-│   └── lib/                  # Utilities
-│       ├── api.ts            # API client with types
-│       ├── telegram.tsx      # Telegram SDK wrapper
-│       ├── ton.ts            # TON payment utilities
-│       └── i18n/             # Translations (en, ru)
-├── server/                   # AWS Lambda Backend
-│   ├── routes/               # API route handlers
-│   ├── middleware/           # Auth, rate limiting
 │   └── lib/                  # Shared utilities
-│       ├── bot.ts            # Telegram bot handlers
-│       ├── bedrock.ts        # Claude AI client
-│       ├── dynamodb.ts       # Database operations
-│       ├── s3.ts             # Avatar storage
-│       └── debt-graph.ts     # Min-cash-flow algorithm
+│       └── i18n/             # Translations (en, ru)
+├── bot/                      # Telegram Bot (Grammy)
+│   ├── bot.ts                # Bot handlers and commands
+│   ├── ai.ts                 # AI expense parsing
+│   └── lambda.ts             # Lambda handler
+├── core/                     # Shared Core Packages
+│   ├── constants/            # App-wide constants
+│   ├── db/                   # Database utilities
+│   ├── session/              # Session management
+│   ├── tools/                # Shared tools/utilities
+│   ├── types/                # TypeScript types
+│   └── vault/                # Secrets management
+├── gui/react/                # React Frontend (React Router 7)
+│   └── app/                  # React application
+├── server/                   # Hono API Server
+│   └── lib/                  # Server utilities
+├── infra/cdk/                # AWS CDK Infrastructure
+│   ├── bin/                  # CDK app entry
+│   ├── lib/stacks/           # CDK stacks
+│   └── scripts/              # Setup & deployment scripts
+├── e2e/                      # Playwright E2E Tests
 ├── docs/
-│   └── SETUP_GUIDE.md        # Complete setup instructions
-├── template.yaml             # AWS SAM template
+│   ├── SETUP_GUIDE.md        # Complete setup instructions
+│   └── DATABASE_SCHEMA.md    # Database schema docs
+├── pnpm-workspace.yaml       # pnpm workspace config
 └── package.json
 ```
 
@@ -338,22 +344,31 @@ fracti/
 
 ```bash
 # Development
-npm run dev              # Start frontend (Vite)
-npm run sam:local        # Start backend (SAM + Docker)
+pnpm dev                 # Start frontend (React Router dev server)
+pnpm dev:bot             # Start bot in dev mode
 
 # Build
-npm run build            # Build frontend
-npm run sam:build        # Build backend
+pnpm build               # Build all packages
+pnpm build:gui           # Build frontend only
+pnpm build:bot           # Build bot only
 
-# Deploy
-npm run sam:deploy       # Deploy to AWS
-npm run deploy:frontend  # Deploy frontend to S3
-npm run webhook:set      # Configure Telegram webhook
+# Deploy (AWS CDK)
+pnpm cdk:bootstrap       # Bootstrap CDK (first time only)
+pnpm cdk:synth           # Synthesize CloudFormation template
+pnpm cdk:deploy          # Deploy to AWS
+
+# Setup
+pnpm setup               # Interactive setup wizard
+pnpm report              # Show deployment report
 
 # Quality
-npm run typecheck        # TypeScript check
-npm run lint             # ESLint
-npm run test             # Vitest
+pnpm typecheck           # TypeScript check (all packages)
+pnpm lint                # ESLint
+pnpm test                # Vitest unit tests
+pnpm test:run            # Run tests once
+pnpm test:coverage       # Run tests with coverage
+pnpm test:e2e            # Playwright E2E tests
+pnpm test:e2e:ui         # Playwright with UI
 ```
 
 ## Environment Variables
@@ -361,13 +376,14 @@ npm run test             # Vitest
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | - | Bot token from @BotFather |
-| `TABLE_NAME` | Yes | - | DynamoDB table name |
-| `S3_BUCKET_NAME` | Yes | - | S3 bucket for avatars |
-| `BEDROCK_MODEL_ID` | No | claude-3-5-sonnet | Claude model ID |
+| `TABLE_NAME` | Auto | - | DynamoDB table name (set by CDK) |
+| `S3_BUCKET_NAME` | Auto | - | S3 bucket for avatars (set by CDK) |
+| `BEDROCK_MODEL_ID` | No | claude-sonnet-4 | Claude model ID |
 | `AWS_REGION` | No | us-east-1 | AWS region |
 | `NODE_ENV` | No | production | Environment mode |
 | `MINI_APP_URL` | No | - | Telegram Mini App URL |
-| `ALLOWED_ORIGINS` | No | telegram.org | CORS origins |
+| `VITE_API_URL` | No | /api | API base URL for frontend |
+| `VITE_TONCONNECT_MANIFEST_URL` | No | - | TON Connect manifest URL |
 
 ## Roadmap
 
