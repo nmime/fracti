@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
-import { CheckCircle, AlertCircle, Coins } from 'lucide-react'
+import { CheckCircle, AlertCircle, Coins, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
+import { useGroup } from '@/lib/group-context'
 import { useTonPayment, type JettonType } from '@/lib/ton'
-import { type Settlement, api } from '@/lib/api'
+import { type Settlement, type DebtNode, api } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
-import { createDemoSettlements, demoWalletAddresses, demoGroup } from '@/lib/fixtures'
 import { SettlementCard } from '@/components/SettlementCard'
 import { WalletButton } from '@/components/WalletButton'
 import { Button } from '@/components/ui/button'
@@ -26,43 +26,55 @@ const paymentOptions: { type: PaymentType; label: string; color: string }[] = [
 export default function SettlePage() {
   const { t } = useTranslation()
   const { user, hapticFeedback } = useTelegram()
+  const { groupId, isLoading: groupLoading } = useGroup()
   const { toast } = useToast()
   const { isConnected, sendTransaction, sendJettonTransaction } = useTonPayment()
-  const [settlements, setSettlements] = useState<Settlement[]>(() => createDemoSettlements())
+  const [settlements, setSettlements] = useState<Settlement[]>([])
+  const [walletAddresses, setWalletAddresses] = useState<Record<string, string>>({})
   const [payingId, setPayingId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentType>('TON')
 
-  // Use Telegram user ID when available, fallback to demo user '1' for development
-  const currentUserId = user?.id ? String(user.id) : '1'
-  // In production, get groupId from route params (e.g., useParams()) or Telegram start_param
-  const groupId = demoGroup.id
+  // Use Telegram user ID when available
+  const currentUserId = user?.id ? String(user.id) : ''
 
   // Fetch settlements from API on mount
   useEffect(() => {
+    if (!groupId || groupLoading) return
+
     const abortController = new AbortController()
 
-    const loadSettlements = async () => {
+    const loadData = async () => {
       setIsLoading(true)
       try {
-        const data = await api.getSettlements(groupId)
+        const [settlementsData, debtsData] = await Promise.all([
+          api.getSettlements(groupId),
+          api.getDebts(groupId),
+        ])
         if (!abortController.signal.aborted) {
-          setSettlements(data)
+          setSettlements(settlementsData)
+          // Build wallet addresses map from debt nodes
+          const wallets: Record<string, string> = {}
+          debtsData.graph.nodes.forEach((node: DebtNode) => {
+            if (node.wallet) {
+              wallets[node.id] = node.wallet
+            }
+          })
+          setWalletAddresses(wallets)
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return
-        logger.error('Failed to load settlements', { groupId }, err)
-        // Keep demo data on error
+        logger.error('Failed to load data', { groupId }, err)
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false)
         }
       }
     }
-    loadSettlements()
+    loadData()
 
     return () => abortController.abort()
-  }, [groupId])
+  }, [groupId, groupLoading])
 
   // Memoize settlement calculations to avoid recalculation on every render
   const { pendingSettlements, completedSettlements, totalOwed, totalToReceive } = useMemo(() => {
@@ -85,6 +97,26 @@ export default function SettlePage() {
     }
   }, [settlements, currentUserId])
 
+  // Show loading state while group is loading
+  if (groupLoading) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  // Show message when no group selected
+  if (!groupId) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
+        <Users className="h-12 w-12 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">{t('settle.noGroup.title')}</h2>
+        <p className="text-muted-foreground">{t('settle.noGroup.description')}</p>
+      </div>
+    )
+  }
+
   const handlePay = async (settlement: Settlement) => {
     if (!isConnected) {
       toast({
@@ -95,7 +127,7 @@ export default function SettlePage() {
       return
     }
 
-    const recipientWallet = demoWalletAddresses[settlement.toUserId]
+    const recipientWallet = walletAddresses[settlement.toUserId]
     if (!recipientWallet) {
       toast({
         title: t('toast.noWalletAddress.title'),

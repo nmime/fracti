@@ -1,27 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, TrendingUp, Download, Users, PieChart } from 'lucide-react'
-import { useTelegram } from '@/lib/telegram'
+import { useGroup } from '@/lib/group-context'
 import { api, type GroupAnalytics } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
-import { demoGroup } from '@/lib/fixtures'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function AnalyticsPage() {
   const { t } = useTranslation()
-  const { user: _user } = useTelegram()
+  const { groupId, isLoading: groupLoading } = useGroup()
   const [analytics, setAnalytics] = useState<GroupAnalytics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
 
-  // In production, get groupId from route params or Telegram start_param
-  const groupId = demoGroup.id
-
   useEffect(() => {
+    if (!groupId || groupLoading) return
+
     const loadAnalytics = async () => {
+      setIsLoading(true)
       try {
         const data = await api.getGroupAnalytics(groupId)
         setAnalytics(data)
@@ -32,7 +31,7 @@ export default function AnalyticsPage() {
       }
     }
     loadAnalytics()
-  }, [groupId])
+  }, [groupId, groupLoading])
 
   const handleExport = async (format: 'csv' | 'html', type: 'expenses' | 'settlements' | 'full') => {
     setIsExporting(true)
@@ -53,10 +52,20 @@ export default function AnalyticsPage() {
     }
   }
 
-  if (isLoading) {
+  if (groupLoading || isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-4">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!groupId) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
+        <Users className="h-12 w-12 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">{t('analytics.noGroup.title')}</h2>
+        <p className="text-muted-foreground">{t('analytics.noGroup.description')}</p>
       </div>
     )
   }

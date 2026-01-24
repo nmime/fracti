@@ -1,4 +1,4 @@
-import { Bot, Context, InlineKeyboard, webhookCallback } from 'grammy'
+import { Bot, Context, InlineKeyboard } from 'grammy'
 import type { Chat, User } from 'grammy/types'
 import { randomUUID } from 'crypto'
 import {
@@ -141,11 +141,17 @@ function getChatTitle(chat: Chat | undefined): string {
   return 'Group'
 }
 
-const getBotToken = () => process.env[$.env.TELEGRAM_BOT_TOKEN] || ''
+const getBotToken = () => {
+  const token = process.env[$.env.TELEGRAM_BOT_TOKEN] || ''
+  console.log('Bot token configured:', token ? `${token.substring(0, 10)}...` : 'EMPTY')
+  return token
+}
 const getMiniAppUrl = () => process.env[$.env.MINI_APP_URL] || 'https://t.me/FractiBot/app'
 
 // Create bot instance
+console.log('Initializing bot...')
 export const bot = new Bot(getBotToken())
+console.log('Bot initialized')
 
 function getT(ctx: Context) {
   const locale = getLocaleFromLanguageCode(ctx.from?.language_code)
@@ -596,5 +602,51 @@ bot.on('inline_query', async (ctx) => {
   })
 })
 
-// Create webhook handler
-export const handleUpdate = webhookCallback(bot, 'std/http')
+// Initialize bot once
+let botInitialized = false
+
+async function ensureBotInitialized(): Promise<void> {
+  if (!botInitialized) {
+    console.log('Initializing bot for first request...')
+    await bot.init()
+    botInitialized = true
+    console.log('Bot initialized with info:', bot.botInfo.username)
+  }
+}
+
+// Handle update directly for Lambda compatibility
+export async function handleUpdate(request: Request): Promise<Response> {
+  try {
+    const body = await request.text()
+    console.log('Received update body length:', body.length)
+
+    if (!body) {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const update = JSON.parse(body)
+    console.log('Parsed update, type:', update.message ? 'message' : update.callback_query ? 'callback' : 'other')
+
+    // Ensure bot is initialized before processing
+    await ensureBotInitialized()
+
+    // Process the update
+    await bot.handleUpdate(update)
+    console.log('Update processed successfully')
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    console.error('Error processing update:', error)
+    // Return 200 to prevent Telegram retries
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+}

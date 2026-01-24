@@ -7,10 +7,13 @@ import {
   ScrollRestoration,
 } from "react-router"
 import type { Route } from "./+types/root"
-import { TonConnectUIProvider } from "@tonconnect/ui-react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary"
 import { TelegramProvider } from "@/lib/telegram"
+import { GroupProvider } from "@/lib/group-context"
+import { ClientOnly } from "@/components/ClientOnly"
+// TonConnect is loaded only on client via .client.tsx file
+import { TonConnectProvider } from "@/components/TonConnectProvider.client"
 import "./styles/tailwind.css"
 
 // Create QueryClient instance
@@ -22,9 +25,6 @@ const queryClient = new QueryClient({
     },
   },
 })
-
-// TON Connect manifest URL
-const manifestUrl = "https://raw.githubusercontent.com/example/fracti/main/tonconnect-manifest.json"
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -60,13 +60,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 function AppProviders({ children }: { children: React.ReactNode }) {
+  // TonConnectProvider is undefined on server (loaded from .client.tsx)
+  const content = (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  )
+
   return (
     <TelegramProvider>
-      <TonConnectUIProvider manifestUrl={manifestUrl}>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      </TonConnectUIProvider>
+      <GroupProvider>
+        <ClientOnly fallback={content}>
+          {TonConnectProvider ? (
+            <TonConnectProvider>{content}</TonConnectProvider>
+          ) : (
+            content
+          )}
+        </ClientOnly>
+      </GroupProvider>
     </TelegramProvider>
   )
 }

@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
-import { type DebtGraph as DebtGraphType, type Group, api } from '@/lib/api'
+import { useGroup } from '@/lib/group-context'
+import { type DebtGraph as DebtGraphType, type UserActivityItem, api } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
-import { demoDebtGraph, demoGroup, demoRecentActivity } from '@/lib/fixtures'
 import { DebtGraph } from '@/components/DebtGraph'
 import { WalletButton } from '@/components/WalletButton'
 import { Button } from '@/components/ui/button'
@@ -16,38 +16,40 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 export default function HomePage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
+  const { groupId, group, isLoading: groupLoading } = useGroup()
   const navigate = useNavigate()
-  const [debtGraph, setDebtGraph] = useState<DebtGraphType>(demoDebtGraph)
-  const [group, setGroup] = useState<Group>(demoGroup)
-  const [isLoading, setIsLoading] = useState(false)
+  const [debtGraph, setDebtGraph] = useState<DebtGraphType | null>(null)
+  const [recentActivity, setRecentActivity] = useState<UserActivityItem[]>([])
+  const [expenseCount, setExpenseCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // In production, get groupId from route params (e.g., useParams()) or Telegram start_param
-  const groupId = demoGroup.id
-
-  const userNode = debtGraph.nodes.find((n) => n.name === 'You')
+  const userNode = debtGraph?.nodes.find((n) => n.name === 'You')
   const userBalance = userNode?.balance ?? 0
   const isOwed = userBalance > 0
 
   useEffect(() => {
+    if (!groupId || groupLoading) return
+
     const abortController = new AbortController()
 
     const loadData = async () => {
       setIsLoading(true)
       try {
-        // Fetch group and debt graph in parallel
-        const [groupData, debtData] = await Promise.all([
-          api.getGroup(groupId),
+        // Fetch debt graph, expenses, and activity in parallel
+        const [debtData, expenses, activity] = await Promise.all([
           api.getDebts(groupId),
+          api.getExpenses(groupId),
+          api.getUserActivity(5),
         ])
         if (!abortController.signal.aborted) {
-          setGroup(groupData)
           setDebtGraph(debtData.graph)
+          setExpenseCount(expenses.length)
+          setRecentActivity(activity)
         }
       } catch (err) {
         // Ignore abort errors
         if (err instanceof Error && err.name === 'AbortError') return
         logger.error('Failed to load data', { groupId }, err)
-        // Keep demo data on error
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false)
@@ -58,14 +60,38 @@ export default function HomePage() {
 
     // Cleanup: abort pending requests on unmount
     return () => abortController.abort()
-  }, [groupId])
+  }, [groupId, groupLoading])
 
-  const formatTimeAgo = useCallback((hours: number) => {
+  const formatTimeAgo = useCallback((dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const hours = diffMs / (1000 * 60 * 60)
+
     if (hours < 1) return t('home.justNow')
     if (hours < 24) return t('home.hoursAgo', { count: Math.floor(hours) })
     const days = Math.floor(hours / 24)
     return t('home.daysAgo', { count: days })
   }, [t])
+
+  // Show loading state while group is loading or no group selected
+  if (groupLoading) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!groupId || !group) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
+        <Users className="h-12 w-12 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">{t('home.noGroup.title')}</h2>
+        <p className="text-muted-foreground">{t('home.noGroup.description')}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 p-4 pb-20">
@@ -123,11 +149,15 @@ export default function HomePage() {
             <div className="flex h-[300px] items-center justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
-          ) : (
+          ) : debtGraph ? (
             <DebtGraph
               data={debtGraph}
               onNodeClick={(node) => logger.debug('Node clicked', { nodeId: node.id })}
             />
+          ) : (
+            <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+              {t('home.noDebts')}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -143,7 +173,7 @@ export default function HomePage() {
               <Receipt className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">12</p>
+              <p className="text-2xl font-bold">{expenseCount}</p>
               <p className="text-xs text-muted-foreground">{t('home.expenses')}</p>
             </div>
           </CardContent>
@@ -154,7 +184,7 @@ export default function HomePage() {
               <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{group.memberCount}</p>
+              <p className="text-2xl font-bold">{group?.memberCount ?? 0}</p>
               <p className="text-xs text-muted-foreground">{t('home.members')}</p>
             </div>
           </CardContent>
@@ -172,28 +202,34 @@ export default function HomePage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {demoRecentActivity.map((activity, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">
-                    {activity.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">
-                    {activity.name} {t('home.paid')} {t('home.for')} {activity.item}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatTimeAgo(activity.hours)}
-                  </p>
+          {recentActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {t('home.noActivity')}
+            </p>
+          ) : (
+            recentActivity.map((activity) => (
+              <div key={activity.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs">
+                      {activity.description.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">
+                      {activity.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatTimeAgo(activity.createdAt)}
+                    </p>
+                  </div>
                 </div>
+                <span className="font-medium text-primary">
+                  {formatTON(activity.amount)} {activity.currency}
+                </span>
               </div>
-              <span className="font-medium text-primary">
-                {formatTON(activity.amount)} TON
-              </span>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>

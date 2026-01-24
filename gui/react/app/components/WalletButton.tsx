@@ -7,8 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ClientOnly } from '@/components/ClientOnly'
 
-export function WalletButton() {
+function WalletButtonInner() {
   const { isConnected, connect, disconnect } = useTonPayment()
   const formattedAddress = useFormattedAddress()
 
@@ -45,5 +46,21 @@ export function WalletButton() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+// Wrapped component that only renders on client to avoid SSR errors with TonConnect
+export function WalletButton() {
+  return (
+    <ClientOnly
+      fallback={
+        <Button variant="outline" className="gap-2" disabled>
+          <Wallet className="h-4 w-4" />
+          Loading...
+        </Button>
+      }
+    >
+      <WalletButtonInner />
+    </ClientOnly>
   )
 }

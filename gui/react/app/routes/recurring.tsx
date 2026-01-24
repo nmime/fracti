@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, Plus, Trash2, Calendar, Clock } from 'lucide-react'
+import { RefreshCw, Plus, Trash2, Calendar, Clock, Users } from 'lucide-react'
 import { useTelegram } from '@/lib/telegram'
+import { useGroup } from '@/lib/group-context'
 import { api, type RecurringTemplate, type CreateRecurringInput, type User } from '@/lib/api'
 import { formatTON } from '@/lib/utils'
 import { logger } from '@/lib/logger'
-import { demoGroup } from '@/lib/fixtures'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -21,16 +21,17 @@ import {
 export default function RecurringPage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
+  const { groupId, isLoading: groupLoading } = useGroup()
   const [templates, setTemplates] = useState<RecurringTemplate[]>([])
   const [members, setMembers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  // In production, get groupId from route params or Telegram start_param
-  const groupId = demoGroup.id
-
   useEffect(() => {
+    if (!groupId || groupLoading) return
+
     const loadData = async () => {
+      setIsLoading(true)
       try {
         const [templatesData, groupData] = await Promise.all([
           api.getRecurringTemplates(groupId),
@@ -45,7 +46,7 @@ export default function RecurringPage() {
       }
     }
     loadData()
-  }, [groupId])
+  }, [groupId, groupLoading])
 
   const handleDelete = async (templateId: string) => {
     if (!confirm(t('recurring.confirmDelete'))) return
@@ -84,10 +85,20 @@ export default function RecurringPage() {
     }
   }
 
-  if (isLoading) {
+  if (groupLoading || isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-4">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!groupId) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
+        <Users className="h-12 w-12 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">{t('recurring.noGroup.title')}</h2>
+        <p className="text-muted-foreground">{t('recurring.noGroup.description')}</p>
       </div>
     )
   }

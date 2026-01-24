@@ -2,7 +2,7 @@
 # AI-powered expense splitting Telegram Mini App with TON settlements
 
 app:
-  stack_name: fracti
+  stack_name: tma
   frontend: "@gui/react"
 
 aws:

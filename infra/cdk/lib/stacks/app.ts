@@ -2,8 +2,7 @@ import * as cdk from 'aws-cdk-lib'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
-import * as apigateway from 'aws-cdk-lib/aws-apigatewayv2'
-import * as apigatewayIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integrations'
+import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront'
 import * as cloudfrontOrigins from 'aws-cdk-lib/aws-cloudfront-origins'
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2'
@@ -11,7 +10,12 @@ import * as logs from 'aws-cdk-lib/aws-logs'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import { Construct } from 'constructs'
 import * as path from 'path'
+import { fileURLToPath } from 'url'
 import $ from '@core/constants'
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // Re-export modular stacks
 export { DynamoDBStack } from './dynamodb'
@@ -33,8 +37,8 @@ export interface FractiAppProps {
 }
 
 /**
- * FractiApp - Orchestrates all modular stacks for the Fracti application
- * This is the recommended approach for new deployments
+ * FractiApp - Single stack approach following AWS sample patterns
+ * This consolidates all resources into a single stack to avoid cross-stack cyclic dependencies
  */
 export class FractiApp extends Construct {
   public readonly dynamoDbStack: cdk.Stack
@@ -49,15 +53,30 @@ export class FractiApp extends Construct {
     const isProduction = stage === 'prod'
 
     // ============================================
-    // Stack 1: DynamoDB (Data Layer)
+    // Main Application Stack (Single Stack Pattern)
     // ============================================
-    this.dynamoDbStack = new cdk.Stack(scope, `Fracti-DynamoDB-${stage}`, {
+    const prefix = $.app.name // 'tma' from app.yaml
+    const mainStack = new cdk.Stack(scope, `${prefix}-${stage}`, {
       env,
-      description: 'Fracti DynamoDB table and indexes',
+      description: 'Telegram Mini App - AI-powered expense splitting with TON settlements',
+      crossRegionReferences: true,
+      synthesizer: new cdk.CliCredentialsStackSynthesizer({
+        fileAssetsBucketName: `${prefix}-assets-${env.account}-${env.region}`,
+        bucketPrefix: '',
+      }),
     })
 
-    const table = new dynamodb.Table(this.dynamoDbStack, 'Table', {
-      tableName: `fracti-${stage}`,
+    // Expose as dynamoDbStack for CDK Nag suppressions compatibility
+    this.dynamoDbStack = mainStack
+    this.backendStack = mainStack
+    this.apiStack = mainStack
+    this.cdnStack = mainStack
+
+    // ============================================
+    // DynamoDB Table (Single Table Design)
+    // ============================================
+    const table = new dynamodb.Table(mainStack, 'Table', {
+      tableName: `${prefix}-${stage}`,
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -91,68 +110,81 @@ export class FractiApp extends Construct {
     })
 
     // ============================================
-    // Stack 2: Backend (Lambda + S3)
+    // S3 Buckets
     // ============================================
-    this.backendStack = new cdk.Stack(scope, `Fracti-Backend-${stage}`, {
-      env,
-      description: 'Fracti Lambda functions and S3 buckets',
-    })
-    this.backendStack.addDependency(this.dynamoDbStack)
 
-    // S3 Bucket for Avatars
-    const avatarsBucket = new s3.Bucket(this.backendStack, 'AvatarsBucket', {
-      bucketName: `fracti-avatars-${cdk.Aws.ACCOUNT_ID}-${stage}`,
-      publicReadAccess: true,
-      blockPublicAccess: new s3.BlockPublicAccess({
-        blockPublicAcls: false,
-        blockPublicPolicy: false,
-        ignorePublicAcls: false,
-        restrictPublicBuckets: false,
-      }),
-      cors: [{
-        allowedHeaders: ['*'],
-        allowedMethods: [s3.HttpMethods.GET],
-        allowedOrigins: ['*'],
-        maxAge: 86400,
-      }],
-      removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: !isProduction,
-    })
-
-    // S3 Bucket for Frontend
-    const frontendBucket = new s3.Bucket(this.backendStack, 'FrontendBucket', {
-      bucketName: `fracti-frontend-${cdk.Aws.ACCOUNT_ID}-${stage}`,
+    // S3 Bucket for Avatars (served via CloudFront)
+    // Note: No bucket policies - served via CloudFront with OAC
+    // (s3:DeleteBucketPolicy not allowed, so we avoid bucket policies)
+    const avatarsBucket = new s3.Bucket(mainStack, 'AvatarsBucket', {
+      bucketName: `${prefix}-avatars-${cdk.Aws.ACCOUNT_ID}-${stage}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: !isProduction,
+      // autoDeleteObjects removed - requires Lambda custom resource
     })
 
+    // S3 Bucket for Frontend (Private, served via CloudFront)
+    const frontendBucket = new s3.Bucket(mainStack, 'FrontendBucket', {
+      bucketName: `${prefix}-frontend-${cdk.Aws.ACCOUNT_ID}-${stage}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      // autoDeleteObjects removed - requires Lambda custom resource
+    })
+
+    // ============================================
+    // Lambda Functions
+    // ============================================
+
     // Common Lambda environment
-    const lambdaEnvironment = {
-      NODE_ENV: stage,
+    const lambdaEnvironment: Record<string, string> = {
+      NODE_ENV: isProduction ? 'production' : 'development',
       TABLE_NAME: table.tableName,
       S3_BUCKET_NAME: avatarsBucket.bucketName,
       BEDROCK_MODEL_ID: $.bedrock.model,
       AWS_REGION_NAME: env.region || 'us-east-1',
+      TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
+      MINI_APP_URL: process.env.MINI_APP_URL || '',
+    }
+
+    // Log group for Lambda functions
+    const appLogGroup = new logs.LogGroup(mainStack, 'AppLogGroup', {
+      logGroupName: `${prefix}-${stage}-app`,
+      retention: isProduction ? logs.RetentionDays.ONE_MONTH : logs.RetentionDays.ONE_WEEK,
+      removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+    })
+
+    // Common bundling options for NodejsFunction
+    const bundlingOptions: lambdaNodejs.BundlingOptions = {
+      minify: true,
+      sourceMap: true,
+      target: 'node22',
+      format: lambdaNodejs.OutputFormat.ESM,
+      mainFields: ['module', 'main'],
+      // Banner to support dynamic require in ESM for Node.js built-ins
+      banner: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`,
+      esbuildArgs: {
+        '--bundle': true,
+      },
     }
 
     // Bot Lambda Function
-    const botFunction = new lambda.Function(this.backendStack, 'BotFunction', {
-      functionName: `fracti-bot-${stage}`,
+    const botFunction = new lambdaNodejs.NodejsFunction(mainStack, 'BotFunction', {
+      functionName: `${prefix}-bot-${stage}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
-      handler: 'lambda.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../bot')),
+      entry: path.join(__dirname, '../../../../bot/lambda.ts'),
+      handler: 'handler',
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(60),
       memorySize: 512,
       tracing: lambda.Tracing.ACTIVE,
-      logRetention: isProduction ? logs.RetentionDays.ONE_MONTH : logs.RetentionDays.ONE_WEEK,
+      logGroup: appLogGroup,
+      bundling: bundlingOptions,
     })
 
-    // GUI Lambda Function (SSR)
-    const guiFunction = new lambda.Function(this.backendStack, 'GuiFunction', {
-      functionName: `fracti-gui-${stage}`,
+    // GUI Lambda Function (SSR) - uses pre-built assets
+    const guiFunction = new lambda.Function(mainStack, 'GuiFunction', {
+      functionName: `${prefix}-gui-${stage}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'server/index.handler',
@@ -164,21 +196,22 @@ export class FractiApp extends Construct {
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       tracing: lambda.Tracing.ACTIVE,
-      logRetention: isProduction ? logs.RetentionDays.ONE_MONTH : logs.RetentionDays.ONE_WEEK,
+      logGroup: appLogGroup,
     })
 
     // API Lambda Function (REST API for Mini App)
-    const apiFunction = new lambda.Function(this.backendStack, 'ApiFunction', {
-      functionName: `fracti-api-${stage}`,
+    const apiFunction = new lambdaNodejs.NodejsFunction(mainStack, 'ApiFunction', {
+      functionName: `${prefix}-api-${stage}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../server')),
+      entry: path.join(__dirname, '../../../../server/index.ts'),
+      handler: 'handler',
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       tracing: lambda.Tracing.ACTIVE,
-      logRetention: isProduction ? logs.RetentionDays.ONE_MONTH : logs.RetentionDays.ONE_WEEK,
+      logGroup: appLogGroup,
+      bundling: bundlingOptions,
     })
 
     // Grant permissions
@@ -203,121 +236,65 @@ export class FractiApp extends Construct {
     apiFunction.addToRolePolicy(bedrockPolicy)
 
     // ============================================
-    // Stack 3: API Gateway
+    // Lambda Function URLs (replacing API Gateway)
     // ============================================
-    this.apiStack = new cdk.Stack(scope, `Fracti-API-${stage}`, {
-      env,
-      description: 'Fracti HTTP API Gateway',
-    })
-    this.apiStack.addDependency(this.backendStack)
 
-    const api = new apigateway.HttpApi(this.apiStack, 'Api', {
-      apiName: `fracti-api-${stage}`,
-      description: 'Fracti API Gateway',
-      corsPreflight: {
-        allowOrigins: ['*'],
-        allowMethods: [
-          apigateway.CorsHttpMethod.GET,
-          apigateway.CorsHttpMethod.POST,
-          apigateway.CorsHttpMethod.PUT,
-          apigateway.CorsHttpMethod.DELETE,
-          apigateway.CorsHttpMethod.OPTIONS,
-        ],
-        allowHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'X-Telegram-Bot-Api-Secret-Token', 'Authorization'],
+    // Bot Function URL
+    const botFunctionUrl = botFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowedOrigins: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'X-Telegram-Bot-Api-Secret-Token', 'Authorization'],
         maxAge: cdk.Duration.days(1),
       },
     })
 
-    // Bot routes
-    const botIntegration = new apigatewayIntegrations.HttpLambdaIntegration('BotIntegration', botFunction)
-    api.addRoutes({
-      path: `${$.artifacts.lambda.bot.basepath}/webhook`,
-      methods: [apigateway.HttpMethod.POST],
-      integration: botIntegration,
-    })
-    api.addRoutes({
-      path: `${$.artifacts.lambda.bot.basepath}/{proxy+}`,
-      methods: [apigateway.HttpMethod.ANY],
-      integration: botIntegration,
+    // GUI Function URL
+    const guiFunctionUrl = guiFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowedOrigins: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'Authorization'],
+        maxAge: cdk.Duration.days(1),
+      },
     })
 
-    // GUI routes
-    const guiIntegration = new apigatewayIntegrations.HttpLambdaIntegration('GuiIntegration', guiFunction)
-    api.addRoutes({
-      path: $.artifacts.lambda.gui.basepath,
-      methods: [apigateway.HttpMethod.GET],
-      integration: guiIntegration,
-    })
-    api.addRoutes({
-      path: `${$.artifacts.lambda.gui.basepath}/{proxy+}`,
-      methods: [apigateway.HttpMethod.ANY],
-      integration: guiIntegration,
+    // API Function URL
+    const apiFunctionUrl = apiFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowedOrigins: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'Authorization'],
+        maxAge: cdk.Duration.days(1),
+      },
     })
 
-    // API routes (REST API for Mini App)
-    const apiIntegration = new apigatewayIntegrations.HttpLambdaIntegration('ApiIntegration', apiFunction)
-    api.addRoutes({
-      path: '/api/{proxy+}',
-      methods: [apigateway.HttpMethod.ANY],
-      integration: apiIntegration,
-    })
+    // Extract domain names from Function URLs for CloudFront origins
+    // Function URLs are in format: https://<url-id>.lambda-url.<region>.on.aws/
+    const botFunctionUrlDomain = cdk.Fn.select(2, cdk.Fn.split('/', botFunctionUrl.url))
+    const guiFunctionUrlDomain = cdk.Fn.select(2, cdk.Fn.split('/', guiFunctionUrl.url))
+    const apiFunctionUrlDomain = cdk.Fn.select(2, cdk.Fn.split('/', apiFunctionUrl.url))
 
     // ============================================
-    // Stack 4: CDN (CloudFront + WAF)
+    // WAF Web ACL (rate limiting only - no managed rules due to permissions)
     // ============================================
-    this.cdnStack = new cdk.Stack(scope, `Fracti-CDN-${stage}`, {
-      env: { ...env, region: 'us-east-1' }, // WAF must be in us-east-1 for CloudFront
-      description: 'Fracti CloudFront distribution and WAF',
-      crossRegionReferences: true,
-    })
-    this.cdnStack.addDependency(this.apiStack)
-
-    // WAF Web ACL
-    const webAcl = new wafv2.CfnWebACL(this.cdnStack, 'WebACL', {
-      name: `fracti-waf-${stage}`,
+    const webAcl = new wafv2.CfnWebACL(mainStack, 'WebACL', {
+      name: `${prefix}-waf-${stage}`,
       scope: 'CLOUDFRONT',
       defaultAction: { allow: {} },
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
-        metricName: `fracti-waf-${stage}`,
+        metricName: `${prefix}-waf-${stage}`,
         sampledRequestsEnabled: true,
       },
       rules: [
-        {
-          name: 'AWS-AWSManagedRulesCommonRuleSet',
-          priority: 1,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: 'AWS',
-              name: 'AWSManagedRulesCommonRuleSet',
-            },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: 'AWSManagedRulesCommonRuleSet',
-            sampledRequestsEnabled: true,
-          },
-        },
-        {
-          name: 'AWS-AWSManagedRulesKnownBadInputsRuleSet',
-          priority: 2,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: 'AWS',
-              name: 'AWSManagedRulesKnownBadInputsRuleSet',
-            },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: 'AWSManagedRulesKnownBadInputsRuleSet',
-            sampledRequestsEnabled: true,
-          },
-        },
+        // Rate limiting rule
         {
           name: 'RateLimitRule',
-          priority: 3,
+          priority: 1,
           action: { block: {} },
           statement: {
             rateBasedStatement: {
@@ -331,33 +308,56 @@ export class FractiApp extends Construct {
             sampledRequestsEnabled: true,
           },
         },
+        // Geo restrictions (if configured in app.yaml)
+        ...($.cdn.geoRestrictions.block.length > 0 ? [{
+          name: 'GeoBlockRule',
+          priority: 2,
+          action: { block: {} },
+          statement: {
+            geoMatchStatement: {
+              countryCodes: $.cdn.geoRestrictions.block,
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'GeoBlockRule',
+            sampledRequestsEnabled: true,
+          },
+        }] : []),
       ],
     })
 
+    // ============================================
+    // CloudFront Distribution
+    // ============================================
+
     // Origin Access Control for S3
-    const oac = new cloudfront.S3OriginAccessControl(this.cdnStack, 'OAC', {
-      originAccessControlName: `fracti-oac-${stage}`,
+    const oac = new cloudfront.S3OriginAccessControl(mainStack, 'OAC', {
+      originAccessControlName: `${prefix}-oac-${stage}`,
       signing: cloudfront.Signing.SIGV4_ALWAYS,
     })
 
-    // S3 origin
-    const s3Origin = cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(frontendBucket, {
+    // S3 origins with OAC
+    const frontendOrigin = cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(frontendBucket, {
+      originAccessControl: oac,
+    })
+    const avatarsOrigin = cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(avatarsBucket, {
       originAccessControl: oac,
     })
 
-    // API Gateway origin
-    const apiOrigin = new cloudfrontOrigins.HttpOrigin(
-      `${api.apiId}.execute-api.${env.region || 'us-east-1'}.amazonaws.com`
-    )
+    // Lambda Function URL origins
+    const botOrigin = new cloudfrontOrigins.HttpOrigin(botFunctionUrlDomain)
+    const guiOrigin = new cloudfrontOrigins.HttpOrigin(guiFunctionUrlDomain)
+    const apiOrigin = new cloudfrontOrigins.HttpOrigin(apiFunctionUrlDomain)
 
     // SPA routing function
-    const spaRoutingFunction = new cloudfront.Function(this.cdnStack, 'SpaRoutingFunction', {
-      functionName: `fracti-spa-routing-${stage}`,
+    const spaRoutingFunction = new cloudfront.Function(mainStack, 'SpaRoutingFunction', {
+      functionName: `${prefix}-spa-routing-${stage}`,
       code: cloudfront.FunctionCode.fromInline(`
         function handler(event) {
           var request = event.request;
           var uri = request.uri;
-          if (!uri.includes('.') && !uri.startsWith('/bot') && !uri.startsWith('/app') && !uri.startsWith('/api')) {
+          if (!uri.includes('.') && !uri.startsWith('/bot') && !uri.startsWith('/app') && !uri.startsWith('/api') && !uri.startsWith('/avatars')) {
             request.uri = '/index.html';
           }
           return request;
@@ -366,9 +366,9 @@ export class FractiApp extends Construct {
     })
 
     // CloudFront Distribution
-    const distribution = new cloudfront.Distribution(this.cdnStack, 'Distribution', {
+    const distribution = new cloudfront.Distribution(mainStack, 'Distribution', {
       defaultBehavior: {
-        origin: s3Origin,
+        origin: frontendOrigin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         functionAssociations: [{
@@ -377,14 +377,34 @@ export class FractiApp extends Construct {
         }],
       },
       additionalBehaviors: {
+        '/avatars/*': {
+          origin: avatarsOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+        },
         '/bot/*': {
-          origin: apiOrigin,
+          origin: botOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        },
+        '/app': {
+          origin: guiOrigin,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
           originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         },
         '/app/*': {
+          origin: guiOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        },
+        '/api': {
           origin: apiOrigin,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
@@ -409,53 +429,53 @@ export class FractiApp extends Construct {
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
     })
 
-    // Grant CloudFront access to S3
-    frontendBucket.addToResourcePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
-      actions: ['s3:GetObject'],
-      resources: [`${frontendBucket.bucketArn}/*`],
-      conditions: {
-        StringEquals: {
-          'AWS:SourceArn': `arn:aws:cloudfront::${cdk.Aws.ACCOUNT_ID}:distribution/${distribution.distributionId}`,
-        },
-      },
-    }))
+    // Note: CloudFront access to S3 is granted automatically by CDK when using
+    // S3BucketOrigin.withOriginAccessControl() - no need for explicit policy
 
     // ============================================
     // Outputs
     // ============================================
-    new cdk.CfnOutput(this.dynamoDbStack, 'TableName', {
+    new cdk.CfnOutput(mainStack, 'TableName', {
       value: table.tableName,
       description: 'DynamoDB table name',
     })
 
-    new cdk.CfnOutput(this.backendStack, 'AvatarsBucketName', {
+    new cdk.CfnOutput(mainStack, 'AvatarsBucketName', {
       value: avatarsBucket.bucketName,
       description: 'S3 bucket for avatars',
     })
 
-    new cdk.CfnOutput(this.backendStack, 'FrontendBucketName', {
+    new cdk.CfnOutput(mainStack, 'FrontendBucketName', {
       value: frontendBucket.bucketName,
       description: 'S3 bucket for frontend',
     })
 
-    new cdk.CfnOutput(this.apiStack, 'ApiEndpoint', {
-      value: api.apiEndpoint,
-      description: 'API Gateway endpoint',
+    new cdk.CfnOutput(mainStack, 'BotFunctionUrl', {
+      value: botFunctionUrl.url,
+      description: 'Bot Lambda Function URL',
     })
 
-    new cdk.CfnOutput(this.apiStack, 'TelegramWebhookUrl', {
-      value: `${api.apiEndpoint}${$.artifacts.lambda.bot.basepath}/webhook`,
+    new cdk.CfnOutput(mainStack, 'GuiFunctionUrl', {
+      value: guiFunctionUrl.url,
+      description: 'GUI Lambda Function URL',
+    })
+
+    new cdk.CfnOutput(mainStack, 'ApiFunctionUrl', {
+      value: apiFunctionUrl.url,
+      description: 'API Lambda Function URL',
+    })
+
+    new cdk.CfnOutput(mainStack, 'TelegramWebhookUrl', {
+      value: `${botFunctionUrl.url}webhook`,
       description: 'Telegram webhook URL',
     })
 
-    new cdk.CfnOutput(this.cdnStack, 'CloudFrontDomain', {
+    new cdk.CfnOutput(mainStack, 'CloudFrontDomain', {
       value: distribution.distributionDomainName,
       description: 'CloudFront domain',
     })
 
-    new cdk.CfnOutput(this.cdnStack, 'CloudFrontDistributionId', {
+    new cdk.CfnOutput(mainStack, 'CloudFrontDistributionId', {
       value: distribution.distributionId,
       description: 'CloudFront distribution ID',
     })
@@ -463,10 +483,9 @@ export class FractiApp extends Construct {
 }
 
 /**
- * @deprecated Use FractiApp with modular stacks for new deployments
- * This single-stack approach is kept for backward compatibility
+ * @deprecated Use FractiApp with single stack approach for new deployments
+ * This legacy single-stack class is kept for backward compatibility
  */
-
 export class FractiStack extends cdk.Stack {
   public readonly table: dynamodb.Table
   public readonly avatarsBucket: s3.Bucket
@@ -487,7 +506,7 @@ export class FractiStack extends cdk.Stack {
     // DynamoDB Table (Single Table Design)
     // ============================================
     this.table = new dynamodb.Table(this, 'Table', {
-      tableName: `fracti-${stage}`,
+      tableName: `${$.app.name}-${stage}`,
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -523,7 +542,7 @@ export class FractiStack extends cdk.Stack {
     // S3 Bucket for Avatars (Public Read)
     // ============================================
     this.avatarsBucket = new s3.Bucket(this, 'AvatarsBucket', {
-      bucketName: `fracti-avatars-${cdk.Aws.ACCOUNT_ID}-${stage}`,
+      bucketName: `${prefix}-avatars-${cdk.Aws.ACCOUNT_ID}-${stage}`,
       publicReadAccess: true,
       blockPublicAccess: new s3.BlockPublicAccess({
         blockPublicAcls: false,
@@ -549,7 +568,7 @@ export class FractiStack extends cdk.Stack {
     // S3 Bucket for Frontend (Private)
     // ============================================
     this.frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
-      bucketName: `fracti-frontend-${cdk.Aws.ACCOUNT_ID}-${stage}`,
+      bucketName: `${prefix}-frontend-${cdk.Aws.ACCOUNT_ID}-${stage}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: isProduction ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: !isProduction,
@@ -559,12 +578,12 @@ export class FractiStack extends cdk.Stack {
     // WAF Web ACL for CloudFront
     // ============================================
     this.waf = new wafv2.CfnWebACL(this, 'WebACL', {
-      name: `fracti-waf-${stage}`,
+      name: `${prefix}-waf-${stage}`,
       scope: 'CLOUDFRONT',
       defaultAction: { allow: {} },
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
-        metricName: `fracti-waf-${stage}`,
+        metricName: `${prefix}-waf-${stage}`,
         sampledRequestsEnabled: true,
       },
       rules: [
@@ -653,7 +672,7 @@ export class FractiStack extends cdk.Stack {
 
     // Bot Lambda Function
     this.botFunction = new lambda.Function(this, 'BotFunction', {
-      functionName: `fracti-bot-${stage}`,
+      functionName: `${prefix}-bot-${stage}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'index.handler',
@@ -676,7 +695,7 @@ export class FractiStack extends cdk.Stack {
 
     // GUI Lambda Function (for SSR)
     this.guiFunction = new lambda.Function(this, 'GuiFunction', {
-      functionName: `fracti-gui-${stage}`,
+      functionName: `${prefix}-gui-${stage}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'server/index.handler',
@@ -722,7 +741,7 @@ export class FractiStack extends cdk.Stack {
     // API Gateway (HTTP API)
     // ============================================
     this.api = new apigateway.HttpApi(this, 'Api', {
-      apiName: `fracti-api-${stage}`,
+      apiName: `${prefix}-api-${stage}`,
       description: 'Fracti API Gateway',
       corsPreflight: {
         allowOrigins: ['*'],
@@ -771,7 +790,7 @@ export class FractiStack extends cdk.Stack {
 
     // Origin Access Control for S3
     const oac = new cloudfront.S3OriginAccessControl(this, 'OAC', {
-      originAccessControlName: `fracti-oac-${stage}`,
+      originAccessControlName: `${prefix}-oac-${stage}`,
       signing: cloudfront.Signing.SIGV4_ALWAYS,
     })
 
@@ -787,7 +806,7 @@ export class FractiStack extends cdk.Stack {
 
     // CloudFront Function for SPA routing
     const spaRoutingFunction = new cloudfront.Function(this, 'SpaRoutingFunction', {
-      functionName: `fracti-spa-routing-${stage}`,
+      functionName: `${prefix}-spa-routing-${stage}`,
       code: cloudfront.FunctionCode.fromInline(`
         function handler(event) {
           var request = event.request;

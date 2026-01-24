@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTelegram } from '@/lib/telegram'
+import { useGroup } from '@/lib/group-context'
 import { type Expense, type User, type CreateExpenseInput, api } from '@/lib/api'
-import { demoMembers, createDemoExpenses, demoGroup } from '@/lib/fixtures'
 import { logger } from '@/lib/logger'
 import { ExpenseCard } from '@/components/ExpenseCard'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
@@ -15,20 +15,21 @@ import { useToast } from '@/components/ui/use-toast'
 export default function ExpensesPage() {
   const { t } = useTranslation()
   const { user } = useTelegram()
+  const { groupId, isLoading: groupLoading } = useGroup()
   const { toast } = useToast()
-  const [expenses, setExpenses] = useState<Expense[]>(() => createDemoExpenses())
-  const [members, setMembers] = useState<User[]>(demoMembers)
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [members, setMembers] = useState<User[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'mine' | 'owe'>('all')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Use Telegram user ID when available, fallback to demo user '1' for development
-  const currentUserId = user?.id ? String(user.id) : '1'
-  // In production, get from route params (e.g., useParams()) or Telegram start_param
-  const groupId = demoGroup.id
+  // Use Telegram user ID when available
+  const currentUserId = user?.id ? String(user.id) : ''
 
   // Fetch group data (including members) and expenses from API on mount
   useEffect(() => {
+    if (!groupId || groupLoading) return
+
     const abortController = new AbortController()
 
     const loadData = async () => {
@@ -46,7 +47,6 @@ export default function ExpensesPage() {
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return
         logger.error('Failed to load group data', { groupId }, err)
-        // Keep demo data on error
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false)
@@ -56,7 +56,7 @@ export default function ExpensesPage() {
     loadData()
 
     return () => abortController.abort()
-  }, [groupId])
+  }, [groupId, groupLoading])
 
   // Memoize filtered expenses to avoid recalculation on every render
   const filteredExpenses = useMemo(() => {
@@ -82,23 +82,10 @@ export default function ExpensesPage() {
   }, [expenses, searchQuery, filter, currentUserId])
 
   const handleAddExpense = async (data: CreateExpenseInput) => {
+    if (!groupId) return
+
     try {
-      // In production: const newExpense = await api.createExpense('demo', data)
-      const newExpense: Expense = {
-        id: Date.now().toString(),
-        groupId: 'demo',
-        payerId: data.payerId,
-        payerName: members.find((m) => m.id === data.payerId)?.name ?? 'Unknown',
-        amount: data.amount,
-        description: data.description,
-        splitType: data.splitType ?? 'equal',
-        splits: data.splits.map((s) => ({
-          userId: s.userId,
-          userName: members.find((m) => m.id === s.userId)?.name ?? 'Unknown',
-          amount: s.amount ?? 0,
-        })),
-        createdAt: new Date().toISOString(),
-      }
+      const newExpense = await api.createExpense(groupId, data)
       setExpenses([newExpense, ...expenses])
       toast({
         title: t('toast.expenseAdded.title'),
@@ -119,8 +106,10 @@ export default function ExpensesPage() {
   }
 
   const handleDeleteExpense = async (id: string) => {
+    if (!groupId) return
+
     try {
-      // In production: await api.deleteExpense('demo', id)
+      await api.deleteExpense(groupId, id)
       setExpenses(expenses.filter((e) => e.id !== id))
       toast({
         title: t('toast.expenseDeleted.title'),
@@ -133,6 +122,26 @@ export default function ExpensesPage() {
         variant: 'destructive',
       })
     }
+  }
+
+  // Show loading state while group is loading
+  if (groupLoading) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  // Show message when no group selected
+  if (!groupId) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
+        <Users className="h-12 w-12 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">{t('expenses.noGroup.title')}</h2>
+        <p className="text-muted-foreground">{t('expenses.noGroup.description')}</p>
+      </div>
+    )
   }
 
   return (

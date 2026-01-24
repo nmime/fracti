@@ -2,8 +2,9 @@ import { useMemo } from 'react'
 import { useTelegram } from '@/lib/telegram'
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ClientOnly } from '@/components/ClientOnly'
 
-export function UserProfile() {
+function UserProfileInner() {
   const { user, theme, isTelegram } = useTelegram()
   const wallet = useTonWallet()
   const [tonConnectUI] = useTonConnectUI()
@@ -195,5 +196,29 @@ export function UserProfile() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrapped component that only renders on client to avoid SSR errors with TonConnect
+export function UserProfile() {
+  return (
+    <ClientOnly
+      fallback={
+        <div className="space-y-6 p-4">
+          <h2 className="text-xl font-bold">Profile</h2>
+          <div className="rounded-lg border bg-card p-6 animate-pulse">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-muted" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-32 bg-muted rounded" />
+                <div className="h-3 w-24 bg-muted rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <UserProfileInner />
+    </ClientOnly>
   )
 }
