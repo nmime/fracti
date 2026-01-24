@@ -90,32 +90,49 @@ Don't use root account for daily operations. Create an IAM user:
 
 ## 3. Install Required Tools
 
-### 3.1 Install Node.js 20+
+### 3.1 Install Node.js 22+
 
 **macOS (using Homebrew):**
 ```bash
-brew install node@20
+brew install node@22
 ```
 
 **Ubuntu/Debian:**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
 **Windows (WSL2):**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
 Verify installation:
 ```bash
-node --version  # Should show v20.x.x
-npm --version   # Should show 10.x.x
+node --version  # Should show v22.x.x
 ```
 
-### 3.2 Install AWS CLI
+### 3.2 Install pnpm
+
+**Using corepack (recommended):**
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+**Or using npm:**
+```bash
+npm install -g pnpm
+```
+
+Verify installation:
+```bash
+pnpm --version  # Should show 10.x.x
+```
+
+### 3.3 Install AWS CLI
 
 **macOS:**
 ```bash
@@ -141,7 +158,7 @@ Verify installation:
 aws --version  # Should show aws-cli/2.x.x
 ```
 
-### 3.3 Configure AWS CLI
+### 3.4 Configure AWS CLI
 
 Run the configuration wizard:
 ```bash
@@ -163,26 +180,24 @@ aws sts get-caller-identity
 
 Should show your account ID and user ARN.
 
-### 3.4 Install AWS SAM CLI
+### 3.5 Install AWS CDK CLI
 
-**macOS:**
+**Using npm (globally):**
 ```bash
-brew install aws-sam-cli
+npm install -g aws-cdk
 ```
 
-**Ubuntu/Debian:**
+**macOS (using Homebrew):**
 ```bash
-wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
-unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
-sudo ./sam-installation/install
+brew install aws-cdk
 ```
 
 Verify installation:
 ```bash
-sam --version  # Should show SAM CLI, version 1.x.x
+cdk --version  # Should show 2.x.x
 ```
 
-### 3.5 Install Git
+### 3.6 Install Git
 
 **macOS:**
 ```bash
@@ -270,7 +285,7 @@ cd fracti
 ### 5.2 Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 5.3 Create Environment File
@@ -309,47 +324,59 @@ EOF
 
 ## 6. Deploy to AWS
 
-### 6.1 Build the Application
+### 6.1 Interactive Setup (Recommended)
+
+The easiest way to deploy is using the interactive setup wizard:
 
 ```bash
-npm run sam:build
+pnpm setup
 ```
 
-This compiles TypeScript and prepares the Lambda function.
+This will guide you through:
+- Configuring environment variables
+- Setting up your Telegram bot token
+- Bootstrapping CDK (first time)
+- Deploying all stacks
 
-### 6.2 First-Time Deployment (Guided)
+### 6.2 Manual Deployment
 
+If you prefer manual deployment:
+
+**First-time only - Bootstrap CDK:**
 ```bash
-npm run sam:deploy:guided
+pnpm cdk:bootstrap
 ```
 
-Answer the prompts:
-
+**Build all packages:**
+```bash
+pnpm build
 ```
-Stack Name [sam-app]: fracti
-AWS Region [us-east-1]: us-east-1
-Parameter TelegramBotToken []: <paste your bot token>
-Parameter Stage [dev]: dev
 
-Confirm changes before deploy [y/N]: y
-Allow SAM CLI IAM role creation [Y/n]: Y
-Disable rollback [y/N]: N
-Save arguments to configuration file [Y/n]: Y
-SAM configuration file [samconfig.toml]: samconfig.toml
-SAM configuration environment [default]: default
+**Deploy to AWS:**
+```bash
+pnpm cdk:deploy
 ```
 
 Wait for deployment (5-10 minutes). Note the outputs:
 - `ApiEndpoint` - Your API URL
 - `TelegramWebhookUrl` - Webhook URL for Telegram
 - `AvatarsBucketName` - S3 bucket for avatars
+- `CloudFrontUrl` - Frontend URL
 
-### 6.3 Subsequent Deployments
+### 6.3 View Deployment Report
+
+After deployment, view your resources:
+
+```bash
+pnpm report
+```
+
+### 6.4 Subsequent Deployments
 
 After first deployment, use:
 
 ```bash
-npm run sam:build && npm run sam:deploy
+pnpm build && pnpm cdk:deploy
 ```
 
 ---
@@ -358,15 +385,11 @@ npm run sam:build && npm run sam:deploy
 
 ### 7.1 Set Webhook URL
 
-After deployment, configure Telegram to send updates to your API:
+After deployment, configure Telegram to send updates to your API.
 
-**Option A: Using npm script**
-```bash
-export TELEGRAM_BOT_TOKEN=your_bot_token_here
-npm run webhook:set
-```
+The webhook is automatically configured during `pnpm setup`. If you need to set it manually:
 
-**Option B: Manual curl command**
+**Manual curl command:**
 ```bash
 curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
@@ -399,42 +422,25 @@ Should show:
 
 ## 8. Deploy Frontend
 
-### 8.1 Update Frontend Environment
+The frontend is automatically deployed as part of `pnpm cdk:deploy`. It includes:
+- S3 bucket for static assets
+- CloudFront distribution for global CDN
+- Automatic SSL certificate
 
-Update `.env.local` with production API URL:
+### 8.1 Frontend URL
 
+After deployment, your frontend will be available at the CloudFront URL shown in the deployment output.
+
+To get the URL anytime:
 ```bash
-cat > .env.local << 'EOF'
-VITE_API_URL=https://xxx.execute-api.us-east-1.amazonaws.com/dev
-VITE_TON_MANIFEST_URL=https://your-cloudfront-domain/tonconnect-manifest.json
-EOF
+pnpm report
 ```
 
-### 8.2 Build Frontend
+### 8.2 TON Connect Manifest
 
-```bash
-npm run build
-```
+The TON Connect manifest is automatically served from your CloudFront distribution.
 
-### 8.3 Deploy to S3 (Production Only)
-
-For production deployment with CloudFront:
-
-```bash
-npm run deploy:frontend
-```
-
-Or manually:
-```bash
-aws s3 sync dist/ s3://$(aws cloudformation describe-stacks \
-  --stack-name fracti \
-  --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
-  --output text) --delete
-```
-
-### 8.4 Create TON Connect Manifest
-
-Create `public/tonconnect-manifest.json`:
+To customize it, edit `public/tonconnect-manifest.json`:
 
 ```json
 {
@@ -444,6 +450,11 @@ Create `public/tonconnect-manifest.json`:
   "termsOfUseUrl": "https://your-app-domain.com/terms",
   "privacyPolicyUrl": "https://your-app-domain.com/privacy"
 }
+```
+
+Then redeploy:
+```bash
+pnpm build:gui && pnpm cdk:deploy
 ```
 
 ---
@@ -511,11 +522,7 @@ Should return:
 
 ### 10.4 Check CloudWatch Logs
 
-```bash
-npm run sam:logs
-```
-
-Or in AWS Console:
+In AWS Console:
 1. Go to CloudWatch
 2. Click "Log groups"
 3. Find `/aws/lambda/fracti-api-dev`
@@ -528,47 +535,53 @@ Or in AWS Console:
 ### 11.1 Start Frontend Dev Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Opens at http://localhost:5173
 
-### 11.2 Start Backend Locally
+### 11.2 Start Bot in Dev Mode
 
 In a new terminal:
 
 ```bash
-npm run sam:local
+pnpm dev:bot
 ```
 
-Starts API at http://localhost:3000
+Starts the Telegram bot with hot reload.
 
-Note: Requires Docker for SAM local.
+### 11.3 Local Environment Variables
 
-### 11.3 Test Local API
+Copy the example environment file:
 
 ```bash
-curl http://localhost:3000/api/health
+cp .env.example .env
 ```
 
-### 11.4 Local Environment Variables
+Edit `.env` with your values:
 
-For local SAM, create `env.json`:
-
-```json
-{
-  "FractiFunction": {
-    "TELEGRAM_BOT_TOKEN": "your_bot_token",
-    "TABLE_NAME": "fracti-dev",
-    "S3_BUCKET_NAME": "fracti-avatars-dev",
-    "NODE_ENV": "development"
-  }
-}
-```
-
-Run with:
 ```bash
-sam local start-api --env-vars env.json
+# Required for local development
+TELEGRAM_BOT_TOKEN=your_bot_token
+TABLE_NAME=fracti-dev
+S3_BUCKET_NAME=fracti-avatars-dev
+NODE_ENV=development
+
+# Frontend
+VITE_API_URL=http://localhost:3000/api
+```
+
+### 11.4 Running Tests
+
+```bash
+# Unit tests
+pnpm test
+
+# E2E tests
+pnpm test:e2e
+
+# With UI
+pnpm test:e2e:ui
 ```
 
 ---
@@ -606,18 +619,19 @@ aws s3 ls s3://fracti-avatars-xxx/
 
 ```bash
 # Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
 
-# Clear SAM build cache
-rm -rf .aws-sam
-npm run sam:build
+# Clear CDK build cache
+rm -rf infra/cdk/cdk.out
+pnpm build
 ```
 
 ### Getting Help
 
-- Check [AWS SAM documentation](https://docs.aws.amazon.com/serverless-application-model/)
+- Check [AWS CDK documentation](https://docs.aws.amazon.com/cdk/)
 - Check [Grammy documentation](https://grammy.dev/)
+- Check [React Router documentation](https://reactrouter.com/)
 - Open issue on GitHub repository
 
 ---
@@ -628,22 +642,26 @@ npm run sam:build
 
 ```bash
 # Build and deploy
-npm run sam:build && npm run sam:deploy
+pnpm build && pnpm cdk:deploy
 
-# View logs
-npm run sam:logs
+# Interactive setup
+pnpm setup
 
-# Set webhook
-npm run webhook:set
+# View deployment report
+pnpm report
 
-# Deploy frontend
-npm run deploy:frontend
+# Type check all packages
+pnpm typecheck
 
-# Type check
-npm run typecheck
+# Run unit tests
+pnpm test
 
-# Run tests
-npm run test
+# Run E2E tests
+pnpm test:e2e
+
+# Development
+pnpm dev        # Frontend
+pnpm dev:bot    # Telegram bot
 ```
 
 ### Environment Variables
@@ -651,8 +669,8 @@ npm run test
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | Bot token from @BotFather |
-| `TABLE_NAME` | Auto | DynamoDB table (set by SAM) |
-| `S3_BUCKET_NAME` | Auto | S3 bucket (set by SAM) |
+| `TABLE_NAME` | Auto | DynamoDB table (set by CDK) |
+| `S3_BUCKET_NAME` | Auto | S3 bucket (set by CDK) |
 | `AWS_REGION` | No | AWS region (default: us-east-1) |
 | `BEDROCK_MODEL_ID` | No | Claude model ID |
 | `NODE_ENV` | No | Environment mode |
@@ -661,11 +679,14 @@ npm run test
 
 | Resource | Name Pattern | Purpose |
 |----------|--------------|---------|
-| DynamoDB | `fracti-{stage}` | Data storage |
-| S3 Bucket | `fracti-avatars-{account}-{stage}` | Avatar images |
-| Lambda | `fracti-api-{stage}` | API backend |
-| API Gateway | `fracti-{stage}` | HTTP API |
-| CloudWatch | `/aws/lambda/fracti-api-{stage}` | Logs |
+| DynamoDB | `FractiTable` | Data storage |
+| S3 Bucket | `fracti-avatars-*` | Avatar images |
+| S3 Bucket | `fracti-frontend-*` | Frontend static files |
+| Lambda | `FractiApi*` | API backend |
+| Lambda | `FractiBot*` | Telegram bot handler |
+| API Gateway | `FractiApi` | HTTP API |
+| CloudFront | `FractiDistribution` | CDN for frontend |
+| CloudWatch | `/aws/lambda/*` | Logs |
 
 ---
 
