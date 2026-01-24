@@ -1,21 +1,11 @@
 import { randomUUID } from 'crypto'
-import {
-  docClient,
-  type ExpenseSplit,
-  createExpense,
-  getGroup,
-} from './dynamodb'
-import {
-  PutCommand,
-  QueryCommand,
-  DeleteCommand,
-  GetCommand,
-} from '@aws-sdk/lib-dynamodb'
-import { config } from './config'
-import { logger } from './logger'
+import { PutCommand, QueryCommand, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
+import { docClient, TABLE_NAME } from '../integrations/dynamodb'
+import type { ExpenseSplit } from '../types/db.types'
+import { expensesRepository } from '../repositories/expenses.repository'
+import { groupsRepository } from '../repositories/groups.repository'
+import { logger } from '../utils/logger'
 import { notifyNewExpense } from './notifications'
-
-const TABLE_NAME = config.TABLE_NAME
 
 /**
  * Recurring expense template record
@@ -244,7 +234,7 @@ export async function processRecurringTemplate(
 
   try {
     // Get group info for notification
-    const group = await getGroup(template.groupId)
+    const group = await groupsRepository.findById(template.groupId)
     if (!group) {
       logger.error('Group not found for recurring template', {
         templateId: template.id,
@@ -255,7 +245,7 @@ export async function processRecurringTemplate(
 
     // Create the expense
     const expenseId = randomUUID()
-    await createExpense({
+    await expensesRepository.create({
       id: expenseId,
       groupId: template.groupId,
       groupTitle: group.title,

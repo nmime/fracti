@@ -1,6 +1,6 @@
 import type { Context, Next } from 'hono'
-import { validateInitData, validateWidgetData, type TelegramUser } from '../lib/telegram'
-import { logger } from '../lib/logger'
+import { validateInitData, validateWidgetData, type TelegramUser } from '../integrations/telegram'
+import { logger } from '../utils/logger'
 
 // Extend Hono context with user
 declare module 'hono' {

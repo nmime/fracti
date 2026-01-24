@@ -1,25 +1,20 @@
 import { Bot, Context, InlineKeyboard, webhookCallback } from 'grammy'
 import type { Chat, User } from 'grammy/types'
 import { randomUUID } from 'crypto'
-import {
-  getGroup,
-  createGroup,
-  upsertUser,
-  getUser,
-  createExpense,
-  getGroupMembers,
-} from './dynamodb'
+import { groupsRepository } from '../repositories/groups.repository'
+import { membersRepository } from '../repositories/members.repository'
+import { expensesRepository } from '../repositories/expenses.repository'
 import {
   invokeClaudeText,
   invokeClaudeVision,
   PARSER_SYSTEM_PROMPT,
   VISION_SYSTEM_PROMPT,
-} from './bedrock'
-import { downloadFile, downloadUserProfilePhoto } from './telegram'
-import { uploadAvatar } from './s3'
+} from '../integrations/bedrock'
+import { downloadFile, downloadUserProfilePhoto } from '../integrations/telegram'
+import { uploadAvatar } from '../integrations/s3'
 import { createTranslator, getLocaleFromLanguageCode } from './i18n'
-import { config } from './config'
-import { logger } from './logger'
+import { config } from '../config'
+import { logger } from '../utils/logger'
 import { extractJSON } from './utils'
 
 /**
@@ -41,7 +36,7 @@ function getChatTitle(chat: Chat | undefined): string {
 }
 
 const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
-const MINI_APP_URL = config.MINI_APP_URL
+const MINI_APP_URL = config.MINI_APP_URL ?? ''
 
 // Create bot instance
 export const bot = new Bot(BOT_TOKEN)
@@ -63,7 +58,7 @@ async function registerUserWithAvatar(
   const name = [user.first_name, user.last_name].filter(Boolean).join(' ')
 
   // Check if user already exists and has an avatar
-  const existingUser = await getUser(groupId, telegramId)
+  const existingUser = await membersRepository.findByGroupAndUser(groupId, telegramId)
 
   let avatarUrl = existingUser?.avatarUrl
 
@@ -82,7 +77,7 @@ async function registerUserWithAvatar(
   }
 
   // Upsert user with avatar
-  await upsertUser(groupId, {
+  await membersRepository.upsert(groupId, {
     id: String(telegramId),
     telegramId,
     name,
@@ -214,9 +209,9 @@ bot.on('message:text', async (ctx) => {
   const groupId = String(chatId)
 
   // Always ensure group exists
-  let group = await getGroup(groupId)
+  let group = await groupsRepository.findById(groupId)
   if (!group) {
-    group = await createGroup({
+    group = await groupsRepository.create({
       id: groupId,
       chatId: groupId,
       title: getChatTitle(ctx.chat),
@@ -249,9 +244,9 @@ bot.on('message:photo', async (ctx) => {
   const groupId = String(chatId)
 
   // Always ensure group exists
-  let group = await getGroup(groupId)
+  let group = await groupsRepository.findById(groupId)
   if (!group) {
-    group = await createGroup({
+    group = await groupsRepository.create({
       id: groupId,
       chatId: groupId,
       title: getChatTitle(ctx.chat),
@@ -277,7 +272,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
   const groupId = String(chatId)
 
   // Get group for the title (already created in main message handler)
-  const group = await getGroup(groupId)
+  const group = await groupsRepository.findById(groupId)
   if (!group) return
 
   try {
@@ -297,7 +292,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
     // Extract amount after validation (TypeScript narrowing)
     const expenseAmount = parsed.amount
 
-    const members = await getGroupMembers(groupId)
+    const members = await membersRepository.findByGroup(groupId)
     const memberMap = new Map(members.map((m) => [m.username?.toLowerCase(), m]))
 
     // Resolve payer
@@ -332,7 +327,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
       })
     }
 
-    await createExpense({
+    await expensesRepository.create({
       id: randomUUID(),
       groupId,
       groupTitle: group.title,
@@ -468,13 +463,13 @@ bot.on('inline_query', async (ctx) => {
     const description = match[2] || t('bot.expense.created', { description: '', amount: '' }).split(':')[0].trim()
 
     // Get user's groups for suggestions
-    const memberships = await getGroupsByUser(userId)
+    const { items: memberships } = await membersRepository.findGroupsByUser(userId)
 
     if (memberships.length > 0) {
       // Add a result for each group
       for (const membership of memberships.slice(0, 10)) {
         const groupId = membership.GSI1SK?.replace('GROUP#', '') || ''
-        const group = await getGroup(groupId)
+        const group = await groupsRepository.findById(groupId)
         if (!group) continue
 
         results.push({
@@ -549,9 +544,6 @@ bot.on('chosen_inline_result', async (ctx) => {
     query: ctx.chosenInlineResult.query,
   })
 })
-
-// Import for inline mode
-import { getGroupsByUser } from './dynamodb'
 
 // Create webhook handler
 export const handleUpdate = webhookCallback(bot, 'std/http')

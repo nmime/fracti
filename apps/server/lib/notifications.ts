@@ -1,6 +1,6 @@
 import { Bot } from 'grammy'
-import { config } from './config'
-import { logger } from './logger'
+import { config } from '../config'
+import { logger } from '../utils/logger'
 
 /**
  * Telegram notification service using Grammy

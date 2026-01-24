@@ -1,5 +1,7 @@
-import { generateExpenseReport, type ExpenseReportRow } from './analytics'
-import { getAllSettlements, getGroup, getGroupMembers } from './dynamodb'
+import { generateExpenseReport, type ExpenseReportRow } from '../services/analytics.service'
+import { groupsRepository } from '../repositories/groups.repository'
+import { membersRepository } from '../repositories/members.repository'
+import { settlementsRepository } from '../repositories/settlements.repository'
 
 /**
  * Export functionality for CSV and PDF generation
@@ -38,7 +40,7 @@ export function generateExpenseCSV(expenses: ExpenseReportRow[]): string {
  * Generate settlement CSV
  */
 export async function generateSettlementCSV(groupId: string): Promise<string> {
-  const settlements = await getAllSettlements(groupId)
+  const settlements = await settlementsRepository.findAllByGroup(groupId)
 
   const headers = [
     'Date',
@@ -74,10 +76,10 @@ export async function generateGroupReportCSV(
   endDate?: string
 ): Promise<string> {
   const [group, members, expenses, settlements] = await Promise.all([
-    getGroup(groupId),
-    getGroupMembers(groupId),
+    groupsRepository.findById(groupId),
+    membersRepository.findByGroup(groupId),
     generateExpenseReport(groupId, undefined, startDate, endDate),
-    getAllSettlements(groupId),
+    settlementsRepository.findAllByGroup(groupId),
   ])
 
   let csv = ''
@@ -150,10 +152,10 @@ export async function generateHTMLReport(
   endDate?: string
 ): Promise<string> {
   const [group, members, expenses, settlements] = await Promise.all([
-    getGroup(groupId),
-    getGroupMembers(groupId),
+    groupsRepository.findById(groupId),
+    membersRepository.findByGroup(groupId),
     generateExpenseReport(groupId, undefined, startDate, endDate),
-    getAllSettlements(groupId),
+    settlementsRepository.findAllByGroup(groupId),
   ])
 
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
