@@ -41,7 +41,7 @@ async function fetchTonPrice(): Promise<number> {
       throw new Error(`CoinGecko API error: ${response.status}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as Record<string, { usd?: number }>
     return data['the-open-network']?.usd ?? 0
   } catch (error) {
     logger.error('Failed to fetch TON price', {}, error as Error)
@@ -62,7 +62,7 @@ async function fetchFiatRates(baseCurrency: string): Promise<Record<string, numb
       throw new Error(`Exchange rate API error: ${response.status}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as { rates?: Record<string, number> }
     return data.rates ?? {}
   } catch (error) {
     logger.error('Failed to fetch fiat rates', { baseCurrency }, error as Error)

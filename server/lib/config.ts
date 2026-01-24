@@ -39,7 +39,7 @@ const envSchema = z.object({
   // AWS Bedrock
   BEDROCK_MODEL_ID: z
     .string()
-    .default('anthropic.claude-3-5-sonnet-20241022-v2:0'),
+    .default('anthropic.claude-sonnet-4-20250514-v1:0'),
 
   // AWS Region (for Bedrock)
   AWS_REGION: z

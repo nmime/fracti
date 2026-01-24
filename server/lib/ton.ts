@@ -324,7 +324,7 @@ async function fetchJettonTransfers(
       return []
     }
 
-    const data = await response.json()
+    const data = await response.json() as { jetton_transfers?: JettonTransfer[] }
     return data.jetton_transfers ?? []
   } catch (error) {
     logger.error('Failed to fetch Jetton transfers', { accountAddress }, error as Error)
