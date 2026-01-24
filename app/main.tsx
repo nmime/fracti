@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TonConnectUIProvider } from '@tonconnect/ui-react'
 import { TelegramProvider } from '@/lib/telegram'
+import { ThemeProvider } from '@/lib/theme'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/toaster'
 import { DeepLinkHandler } from '@/components/DeepLinkHandler'
@@ -37,24 +38,26 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TonConnectUIProvider manifestUrl={tonConfig.manifestUrl}>
-          <TelegramProvider>
-            <BrowserRouter>
-              <DeepLinkHandler />
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <Routes>
-                  <Route element={<RootLayout />}>
-                    <Route index element={<HomePage />} />
-                    <Route path="expenses" element={<ExpensesPage />} />
-                    <Route path="settle" element={<SettlePage />} />
-                    <Route path="scan" element={<ScanPage />} />
-                    <Route path="analytics" element={<AnalyticsPage />} />
-                    <Route path="recurring" element={<RecurringPage />} />
-                  </Route>
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
-            <Toaster />
-          </TelegramProvider>
+          <ThemeProvider>
+            <TelegramProvider>
+              <BrowserRouter>
+                <DeepLinkHandler />
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <Routes>
+                    <Route element={<RootLayout />}>
+                      <Route index element={<HomePage />} />
+                      <Route path="expenses" element={<ExpensesPage />} />
+                      <Route path="settle" element={<SettlePage />} />
+                      <Route path="scan" element={<ScanPage />} />
+                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="recurring" element={<RecurringPage />} />
+                    </Route>
+                  </Routes>
+                </Suspense>
+              </BrowserRouter>
+              <Toaster />
+            </TelegramProvider>
+          </ThemeProvider>
         </TonConnectUIProvider>
       </QueryClientProvider>
     </ErrorBoundary>

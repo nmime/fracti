@@ -158,8 +158,8 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
         secondaryBackgroundColor: themeParams.secondary_bg_color || defaultTheme.secondaryBackgroundColor,
       })
 
-      // Apply theme to document
-      document.documentElement.classList.toggle('dark', WebApp.colorScheme === 'dark')
+      // Note: Theme class is now managed by ThemeProvider
+      // Only set background color for Telegram WebApp integration
       document.body.style.backgroundColor = themeParams.bg_color || defaultTheme.backgroundColor
 
       setIsReady(true)
