@@ -1,5 +1,5 @@
 import { Bot, Context, InlineKeyboard } from 'grammy'
-import type { Chat, User } from 'grammy/types'
+import type { Chat, User, Update } from 'grammy/types'
 import { randomUUID } from 'crypto'
 import {
   getGroup,
@@ -141,32 +141,34 @@ function getChatTitle(chat: Chat | undefined): string {
   return 'Group'
 }
 
-const getBotToken = () => {
-  const token = process.env[$.env.TELEGRAM_BOT_TOKEN] || ''
-  console.log('Bot token configured:', token ? `${token.substring(0, 10)}...` : 'EMPTY')
-  return token
-}
+// Configuration
+const getBotToken = () => process.env[$.env.TELEGRAM_BOT_TOKEN] || ''
 const getMiniAppUrl = () => process.env[$.env.MINI_APP_URL] || 'https://t.me/FractiBot/app'
 
-// Create bot instance
-console.log('Initializing bot...')
-export const bot = new Bot(getBotToken())
-console.log('Bot initialized')
+// Bot info to avoid init() call in Lambda cold starts
+const BOT_INFO = {
+  id: 8365279809,
+  is_bot: true as const,
+  first_name: 'Fracti',
+  username: 'fractibot',
+  can_join_groups: true,
+  can_read_all_group_messages: false,
+  supports_inline_queries: true,
+  can_connect_to_business: false,
+  has_main_web_app: true,
+}
 
+// Helper functions
 function getT(ctx: Context) {
   const locale = getLocaleFromLanguageCode(ctx.from?.language_code)
   return createTranslator(locale)
 }
 
-async function registerUserWithAvatar(
-  groupId: string,
-  user: User
-): Promise<void> {
+async function registerUserWithAvatar(groupId: string, user: User): Promise<void> {
   const telegramId = user.id
   const name = [user.first_name, user.last_name].filter(Boolean).join(' ')
 
   const existingUser = await getUser(groupId, telegramId)
-
   let avatarUrl = existingUser?.avatarUrl
 
   if (!avatarUrl) {
@@ -189,173 +191,6 @@ async function registerUserWithAvatar(
   })
 }
 
-// Command handlers
-bot.command('start', async (ctx) => {
-  const t = getT(ctx)
-  const chatType = ctx.chat?.type
-
-  if (chatType === 'private') {
-    const keyboard = new InlineKeyboard()
-      .webApp(t('bot.welcome.openApp'), getMiniAppUrl())
-      .row()
-      .url('Add to Group', `https://t.me/${ctx.me.username}?startgroup=true`)
-
-    await ctx.reply(
-      `👋 ${t('bot.welcome.private')}\n\n` +
-        `${t('bot.welcome.privateDescription')}\n\n` +
-        '<b>How to use:</b>\n' +
-        '1. Add me to a group chat\n' +
-        '2. Send messages like "I paid 50 for dinner"\n' +
-        '3. Or send receipt photos to scan\n' +
-        '4. Open the Mini App to view balances and settle up\n\n' +
-        '📱 Click below to get started!',
-      {
-        parse_mode: 'HTML',
-        reply_markup: keyboard,
-      }
-    )
-  } else {
-    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
-
-    await ctx.reply(
-      `💰 ${t('bot.welcome.group')}\n\n` +
-        `${t('bot.welcome.groupDescription')}\n\n` +
-        '<b>Quick start:</b>\n' +
-        '• "I paid 50 for dinner with @alice"\n' +
-        '• Send a receipt photo\n' +
-        '• /balance - View balances\n' +
-        '• /help - More commands',
-      {
-        parse_mode: 'HTML',
-        reply_markup: keyboard,
-      }
-    )
-  }
-})
-
-bot.command('help', async (ctx) => {
-  const t = getT(ctx)
-  const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
-
-  await ctx.reply(
-    `💰 ${t('bot.help.title')}\n\n` +
-      `${t('bot.help.balance')}\n` +
-      `${t('bot.help.expenses')}\n` +
-      `${t('bot.help.settle')}\n` +
-      `${t('bot.help.add')}\n\n` +
-      `${t('bot.help.automatic')}\n` +
-      `${t('bot.help.example1')}\n` +
-      `${t('bot.help.example2')}\n` +
-      `${t('bot.help.example3')}\n\n` +
-      `📱 ${t('bot.help.openAppCta')}`,
-    {
-      parse_mode: 'HTML',
-      reply_markup: keyboard,
-    }
-  )
-})
-
-bot.command('balance', async (ctx) => {
-  const t = getT(ctx)
-  const keyboard = new InlineKeyboard().webApp(t('bot.balance.title'), getMiniAppUrl())
-
-  await ctx.reply(`📊 ${t('bot.balance.openApp')}`, {
-    reply_markup: keyboard,
-  })
-})
-
-bot.command('expenses', async (ctx) => {
-  const t = getT(ctx)
-  const keyboard = new InlineKeyboard().webApp(t('bot.expenses.title'), getMiniAppUrl())
-
-  await ctx.reply(`📝 ${t('bot.expenses.openApp')}`, {
-    reply_markup: keyboard,
-  })
-})
-
-bot.command('settle', async (ctx) => {
-  const t = getT(ctx)
-  const keyboard = new InlineKeyboard().webApp(t('bot.settle.title'), getMiniAppUrl())
-
-  await ctx.reply(`💸 ${t('bot.settle.openApp')}`, {
-    reply_markup: keyboard,
-  })
-})
-
-bot.command('add', async (ctx) => {
-  const t = getT(ctx)
-
-  await ctx.reply(
-    `➕ ${t('bot.add.title')}\n\n` +
-      `${t('bot.add.description')}\n\n` +
-      `${t('bot.add.examples')}\n` +
-      `${t('bot.add.example1')}\n` +
-      `${t('bot.add.example2')}\n` +
-      `${t('bot.add.example3')}\n\n` +
-      `${t('bot.add.tip')}`,
-    { parse_mode: 'HTML' }
-  )
-})
-
-// Handle ALL text messages
-bot.on('message:text', async (ctx) => {
-  if (ctx.message.text.startsWith('/')) return
-  if (ctx.chat.type === 'private') return
-
-  const chatId = ctx.chat?.id
-  const user = ctx.from
-  if (!chatId || !user) return
-
-  const groupId = String(chatId)
-
-  let group = await getGroup(groupId)
-  if (!group) {
-    group = await createGroup({
-      id: groupId,
-      chatId: groupId,
-      title: getChatTitle(ctx.chat),
-      createdAt: new Date().toISOString(),
-      memberCount: 1,
-    })
-  }
-
-  await registerUserWithAvatar(groupId, user)
-
-  const botUsername = ctx.me.username.toLowerCase()
-  const text = ctx.message.text.toLowerCase()
-  const isBotMentioned = text.includes(`@${botUsername}`)
-
-  if (!isBotMentioned) return
-
-  await handleExpenseMessage(ctx)
-})
-
-// Handle photo messages
-bot.on('message:photo', async (ctx) => {
-  if (ctx.chat.type === 'private') return
-
-  const chatId = ctx.chat?.id
-  const user = ctx.from
-  if (!chatId || !user) return
-
-  const groupId = String(chatId)
-
-  let group = await getGroup(groupId)
-  if (!group) {
-    group = await createGroup({
-      id: groupId,
-      chatId: groupId,
-      title: getChatTitle(ctx.chat),
-      createdAt: new Date().toISOString(),
-      memberCount: 1,
-    })
-  }
-
-  await registerUserWithAvatar(groupId, user)
-
-  await handlePhotoMessage(ctx)
-})
-
 async function handleExpenseMessage(ctx: Context): Promise<void> {
   const t = getT(ctx)
   const chatId = ctx.chat?.id
@@ -365,7 +200,6 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
   if (!chatId || !user || !text) return
 
   const groupId = String(chatId)
-
   const group = await getGroup(groupId)
   if (!group) return
 
@@ -383,7 +217,6 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
     if (!parsed || !parsed.amount || parsed.amount <= 0 || (parsed.confidence ?? 0) < 0.5) return
 
     const expenseAmount = parsed.amount
-
     const members = await getGroupMembers(groupId)
     const memberMap = new Map(members.map((m) => [m.username?.toLowerCase(), m]))
 
@@ -432,14 +265,13 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
     })
 
     const eachAmount = (expenseAmount / splits.length).toFixed(2)
-    const splitText =
-      splits.length > 1
-        ? t('bot.expense.splitWays', { count: splits.length, each: eachAmount })
-        : ''
+    const splitText = splits.length > 1
+      ? t('bot.expense.splitWays', { count: splits.length, each: eachAmount })
+      : ''
 
     const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
-
     const description = parsed.description || 'Expense'
+
     await ctx.reply(
       `✅ ${t('bot.expense.created', { description, amount: expenseAmount })}\n` +
         `${t('bot.expense.paidBy', { name: payerName })}\n${splitText}`,
@@ -501,7 +333,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
       return
     }
 
-    const receiptTotal = parsed.total ?? parsed.items.reduce((sum: number, item: { name: string; price: number }) => sum + item.price, 0)
+    const receiptTotal = parsed.total ?? parsed.items.reduce((sum, item) => sum + item.price, 0)
 
     let summary = `🧾 ${t('bot.receipt.success', { merchant: parsed.merchant || 'Receipt' })}\n\n`
     for (const item of parsed.items.slice(0, 8)) {
@@ -525,128 +357,282 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
   }
 }
 
-// Inline mode
-bot.on('inline_query', async (ctx) => {
-  const query = ctx.inlineQuery.query.trim()
-  const userId = ctx.from.id
+// Setup all bot handlers
+function setupBotHandlers(bot: Bot): void {
+  // Command: /start
+  bot.command('start', async (ctx) => {
+    const t = getT(ctx)
+    const chatType = ctx.chat?.type
 
-  const match = query.match(/^(\d+(?:\.\d+)?)\s*(.*)$/)
+    if (chatType === 'private') {
+      const keyboard = new InlineKeyboard()
+        .webApp(t('bot.welcome.openApp'), getMiniAppUrl())
+        .row()
+        .url('Add to Group', `https://t.me/${ctx.me.username}?startgroup=true`)
 
-  const results = []
+      await ctx.reply(
+        `👋 ${t('bot.welcome.private')}\n\n` +
+          `${t('bot.welcome.privateDescription')}\n\n` +
+          '<b>How to use:</b>\n' +
+          '1. Add me to a group chat\n' +
+          '2. Send messages like "I paid 50 for dinner"\n' +
+          '3. Or send receipt photos to scan\n' +
+          '4. Open the Mini App to view balances and settle up\n\n' +
+          '📱 Click below to get started!',
+        {
+          parse_mode: 'HTML',
+          reply_markup: keyboard,
+        }
+      )
+    } else {
+      const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
 
-  if (match) {
-    const amount = parseFloat(match[1])
-    const description = match[2] || 'Expense'
-
-    const memberships = await getGroupsByUser(userId)
-
-    if (memberships.length > 0) {
-      for (const membership of memberships.slice(0, 10)) {
-        const groupId = membership.GSI1SK?.replace('GROUP#', '') || ''
-        const group = await getGroup(groupId)
-        if (!group) continue
-
-        results.push({
-          type: 'article' as const,
-          id: `expense-${groupId}-${Date.now()}`,
-          title: `💸 ${amount} - ${description}`,
-          description: `Add to ${group.title}`,
-          input_message_content: {
-            message_text: `💸 <b>New Expense</b>\n\n` +
-              `Amount: <b>${amount} ${group.currency ?? 'TON'}</b>\n` +
-              `Description: ${description}\n` +
-              `Group: ${group.title}\n\n` +
-              `<i>Open the app to confirm and split this expense</i>`,
-            parse_mode: 'HTML' as const,
-          },
-          reply_markup: {
-            inline_keyboard: [[
-              { text: '✅ Add Expense', web_app: { url: `${getMiniAppUrl()}?group=${groupId}&amount=${amount}&desc=${encodeURIComponent(description)}` } }
-            ]]
-          },
-        })
-      }
+      await ctx.reply(
+        `💰 ${t('bot.welcome.group')}\n\n` +
+          `${t('bot.welcome.groupDescription')}\n\n` +
+          '<b>Quick start:</b>\n' +
+          '• "I paid 50 for dinner with @alice"\n' +
+          '• Send a receipt photo\n' +
+          '• /balance - View balances\n' +
+          '• /help - More commands',
+        {
+          parse_mode: 'HTML',
+          reply_markup: keyboard,
+        }
+      )
     }
-
-    results.push({
-      type: 'article' as const,
-      id: `expense-new-${Date.now()}`,
-      title: `💸 ${amount} - ${description}`,
-      description: 'Share expense details',
-      input_message_content: {
-        message_text: `💸 <b>Expense to Split</b>\n\n` +
-          `Amount: <b>${amount}</b>\n` +
-          `Description: ${description}\n\n` +
-          `<i>Add me to a group to track shared expenses!</i>`,
-        parse_mode: 'HTML' as const,
-      },
-    })
-  } else if (query.length === 0) {
-    results.push({
-      type: 'article' as const,
-      id: 'help',
-      title: '💡 How to use inline mode',
-      description: 'Type: amount description (e.g., "50 dinner")',
-      input_message_content: {
-        message_text: `💡 <b>Fracti Inline Mode</b>\n\n` +
-          `Type: <code>@${ctx.me.username} 50 dinner</code>\n\n` +
-          `This lets you quickly share expenses in any chat!`,
-        parse_mode: 'HTML' as const,
-      },
-    })
-  }
-
-  await ctx.answerInlineQuery(results, {
-    cache_time: 10,
-    is_personal: true,
   })
-})
 
-// Initialize bot once
-let botInitialized = false
+  // Command: /help
+  bot.command('help', async (ctx) => {
+    const t = getT(ctx)
+    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
 
-async function ensureBotInitialized(): Promise<void> {
-  if (!botInitialized) {
-    console.log('Initializing bot for first request...')
-    await bot.init()
-    botInitialized = true
-    console.log('Bot initialized with info:', bot.botInfo.username)
-  }
-}
+    await ctx.reply(
+      `💰 ${t('bot.help.title')}\n\n` +
+        `${t('bot.help.balance')}\n` +
+        `${t('bot.help.expenses')}\n` +
+        `${t('bot.help.settle')}\n` +
+        `${t('bot.help.add')}\n\n` +
+        `${t('bot.help.automatic')}\n` +
+        `${t('bot.help.example1')}\n` +
+        `${t('bot.help.example2')}\n` +
+        `${t('bot.help.example3')}\n\n` +
+        `📱 ${t('bot.help.openAppCta')}`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+      }
+    )
+  })
 
-// Handle update directly for Lambda compatibility
-export async function handleUpdate(request: Request): Promise<Response> {
-  try {
-    const body = await request.text()
-    console.log('Received update body length:', body.length)
+  // Command: /balance
+  bot.command('balance', async (ctx) => {
+    const t = getT(ctx)
+    const keyboard = new InlineKeyboard().webApp(t('bot.balance.title'), getMiniAppUrl())
+    await ctx.reply(`📊 ${t('bot.balance.openApp')}`, { reply_markup: keyboard })
+  })
 
-    if (!body) {
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+  // Command: /expenses
+  bot.command('expenses', async (ctx) => {
+    const t = getT(ctx)
+    const keyboard = new InlineKeyboard().webApp(t('bot.expenses.title'), getMiniAppUrl())
+    await ctx.reply(`📝 ${t('bot.expenses.openApp')}`, { reply_markup: keyboard })
+  })
+
+  // Command: /settle
+  bot.command('settle', async (ctx) => {
+    const t = getT(ctx)
+    const keyboard = new InlineKeyboard().webApp(t('bot.settle.title'), getMiniAppUrl())
+    await ctx.reply(`💸 ${t('bot.settle.openApp')}`, { reply_markup: keyboard })
+  })
+
+  // Command: /add
+  bot.command('add', async (ctx) => {
+    const t = getT(ctx)
+    await ctx.reply(
+      `➕ ${t('bot.add.title')}\n\n` +
+        `${t('bot.add.description')}\n\n` +
+        `${t('bot.add.examples')}\n` +
+        `${t('bot.add.example1')}\n` +
+        `${t('bot.add.example2')}\n` +
+        `${t('bot.add.example3')}\n\n` +
+        `${t('bot.add.tip')}`,
+      { parse_mode: 'HTML' }
+    )
+  })
+
+  // Handle text messages
+  bot.on('message:text', async (ctx) => {
+    if (ctx.message.text.startsWith('/')) return
+    if (ctx.chat.type === 'private') return
+
+    const chatId = ctx.chat?.id
+    const user = ctx.from
+    if (!chatId || !user) return
+
+    const groupId = String(chatId)
+
+    let group = await getGroup(groupId)
+    if (!group) {
+      group = await createGroup({
+        id: groupId,
+        chatId: groupId,
+        title: getChatTitle(ctx.chat),
+        createdAt: new Date().toISOString(),
+        memberCount: 1,
       })
     }
 
-    const update = JSON.parse(body)
-    console.log('Parsed update, type:', update.message ? 'message' : update.callback_query ? 'callback' : 'other')
+    await registerUserWithAvatar(groupId, user)
 
-    // Ensure bot is initialized before processing
-    await ensureBotInitialized()
+    const botUsername = ctx.me.username.toLowerCase()
+    const text = ctx.message.text.toLowerCase()
+    const isBotMentioned = text.includes(`@${botUsername}`)
 
-    // Process the update
-    await bot.handleUpdate(update)
-    console.log('Update processed successfully')
+    if (!isBotMentioned) return
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+    await handleExpenseMessage(ctx)
+  })
+
+  // Handle photo messages
+  bot.on('message:photo', async (ctx) => {
+    if (ctx.chat.type === 'private') return
+
+    const chatId = ctx.chat?.id
+    const user = ctx.from
+    if (!chatId || !user) return
+
+    const groupId = String(chatId)
+
+    let group = await getGroup(groupId)
+    if (!group) {
+      group = await createGroup({
+        id: groupId,
+        chatId: groupId,
+        title: getChatTitle(ctx.chat),
+        createdAt: new Date().toISOString(),
+        memberCount: 1,
+      })
+    }
+
+    await registerUserWithAvatar(groupId, user)
+    await handlePhotoMessage(ctx)
+  })
+
+  // Inline mode
+  bot.on('inline_query', async (ctx) => {
+    const query = ctx.inlineQuery.query.trim()
+    const userId = ctx.from.id
+    const match = query.match(/^(\d+(?:\.\d+)?)\s*(.*)$/)
+    const results = []
+
+    if (match) {
+      const amount = parseFloat(match[1])
+      const description = match[2] || 'Expense'
+      const memberships = await getGroupsByUser(userId)
+
+      if (memberships.length > 0) {
+        for (const membership of memberships.slice(0, 10)) {
+          const groupId = membership.GSI1SK?.replace('GROUP#', '') || ''
+          const group = await getGroup(groupId)
+          if (!group) continue
+
+          results.push({
+            type: 'article' as const,
+            id: `expense-${groupId}-${Date.now()}`,
+            title: `💸 ${amount} - ${description}`,
+            description: `Add to ${group.title}`,
+            input_message_content: {
+              message_text: `💸 <b>New Expense</b>\n\n` +
+                `Amount: <b>${amount} ${group.currency ?? 'TON'}</b>\n` +
+                `Description: ${description}\n` +
+                `Group: ${group.title}\n\n` +
+                `<i>Open the app to confirm and split this expense</i>`,
+              parse_mode: 'HTML' as const,
+            },
+            reply_markup: {
+              inline_keyboard: [[
+                { text: '✅ Add Expense', web_app: { url: `${getMiniAppUrl()}?group=${groupId}&amount=${amount}&desc=${encodeURIComponent(description)}` } }
+              ]]
+            },
+          })
+        }
+      }
+
+      results.push({
+        type: 'article' as const,
+        id: `expense-new-${Date.now()}`,
+        title: `💸 ${amount} - ${description}`,
+        description: 'Share expense details',
+        input_message_content: {
+          message_text: `💸 <b>Expense to Split</b>\n\n` +
+            `Amount: <b>${amount}</b>\n` +
+            `Description: ${description}\n\n` +
+            `<i>Add me to a group to track shared expenses!</i>`,
+          parse_mode: 'HTML' as const,
+        },
+      })
+    } else if (query.length === 0) {
+      results.push({
+        type: 'article' as const,
+        id: 'help',
+        title: '💡 How to use inline mode',
+        description: 'Type: amount description (e.g., "50 dinner")',
+        input_message_content: {
+          message_text: `💡 <b>Fracti Inline Mode</b>\n\n` +
+            `Type: <code>@${ctx.me.username} 50 dinner</code>\n\n` +
+            `This lets you quickly share expenses in any chat!`,
+          parse_mode: 'HTML' as const,
+        },
+      })
+    }
+
+    await ctx.answerInlineQuery(results, {
+      cache_time: 10,
+      is_personal: true,
     })
+  })
+}
+
+// Bot factory - creates and configures a new bot instance
+function createBot(): Bot {
+  const bot = new Bot(getBotToken(), { botInfo: BOT_INFO })
+  setupBotHandlers(bot)
+  return bot
+}
+
+// Lazy initialization for Lambda
+type UpdateHandler = (update: Update) => Promise<void>
+let cachedHandler: UpdateHandler | null = null
+
+async function getHandler(): Promise<UpdateHandler> {
+  if (!cachedHandler) {
+    const bot = createBot()
+    cachedHandler = (update: Update) => bot.handleUpdate(update)
+  }
+  return cachedHandler
+}
+
+// Export for Lambda handler
+export async function handleBotUpdate(update: Update): Promise<{ ok: boolean }> {
+  try {
+    const handler = await getHandler()
+    await handler(update)
+    return { ok: true }
   } catch (error) {
-    console.error('Error processing update:', error)
-    // Return 200 to prevent Telegram retries
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    console.error('Bot update error:', error)
+    return { ok: true } // Return ok to prevent Telegram retries
   }
 }
+
+// For local development polling
+export function startBot() {
+  const bot = createBot()
+  bot.start({
+    onStart: (info) => console.log(`Bot @${info.username} started`),
+  })
+}
+
+// Exported for testing
+export const bot = createBot()

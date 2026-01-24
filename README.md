@@ -275,91 +275,154 @@ See **[docs/DATABASE_SCHEMA.md](./docs/DATABASE_SCHEMA.md)** for complete schema
 
 ## Setup & Deployment
 
-See **[docs/SETUP_GUIDE.md](./docs/SETUP_GUIDE.md)** for complete instructions including:
+### Prerequisites
 
-- AWS account creation from zero
-- IAM user setup with correct permissions
-- Installing Node.js 22+, pnpm, AWS CLI, AWS CDK
-- Creating Telegram bot with @BotFather
-- Deploying to AWS with CDK
-- Configuring Telegram webhook
-- Enabling Bedrock model access
-- Local development setup
-- Troubleshooting guide
+- Node.js 22+
+- pnpm 10+
+- AWS CLI configured with credentials
+- Telegram bot token from @BotFather
 
-### Quick Start (if you have AWS configured)
+### Environment Setup
+
+Create a `.env` file in the project root:
 
 ```bash
-# Clone and install
-git clone https://github.com/yourusername/fracti.git
-cd fracti
+# AWS Credentials
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_SESSION_TOKEN=your_session_token  # if using temporary credentials
+AWS_REGION=us-east-1
+AWS_DEFAULT_REGION=us-east-1
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+MINI_APP_URL=https://t.me/YourBot/app
+```
+
+### Quick Deploy
+
+```bash
+# Install dependencies
 pnpm install
 
-# Interactive setup (configures .env and deploys)
-pnpm setup
+# Deploy everything (builds, deploys CDK, configures bot, uploads frontend)
+./scripts/deploy.sh
+```
 
-# Or manual deployment
-pnpm cdk:bootstrap    # First time only
-pnpm cdk:deploy       # Deploy all stacks
+### Manual Deployment Steps
+
+```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Build all packages
+pnpm build
+
+# 3. Bootstrap CDK (first time only)
+cd infra/cdk && pnpm exec cdk bootstrap
+
+# 4. Deploy infrastructure
+pnpm exec cdk deploy --all --require-approval never
+
+# 5. Configure bot webhook (uses CDK outputs)
+export WEBHOOK_URL="<BotFunctionUrl from CDK output>/webhook"
+pnpm exec tsx scripts/setup.ts
+
+# 6. Upload frontend assets
+aws s3 sync gui/react/build/client s3://<FrontendBucketName from CDK output> --delete
+
+# 7. Invalidate CloudFront cache
+aws cloudfront create-invalidation --distribution-id <CloudFrontDistributionId> --paths "/*"
+```
+
+### CDK Stack Outputs
+
+After deployment, CDK provides these outputs:
+
+| Output | Description |
+|--------|-------------|
+| `BotFunctionUrl` | Lambda URL for bot webhook |
+| `GuiFunctionUrl` | Lambda URL for SSR |
+| `ApiFunctionUrl` | Lambda URL for API |
+| `CloudFrontDomain` | CDN domain for the app |
+| `CloudFrontDistributionId` | For cache invalidation |
+| `FrontendBucketName` | S3 bucket for static assets |
+| `AvatarsBucketName` | S3 bucket for user avatars |
+| `TableName` | DynamoDB table name |
+| `TelegramWebhookUrl` | Full webhook URL to register |
+
+### Local Development
+
+```bash
+# Start frontend dev server
+pnpm dev
+
+# Start bot in polling mode (for local testing)
+pnpm dev:bot
 ```
 
 ## Project Structure
 
 ```
 fracti/                       # pnpm Monorepo
-├── app/                      # Legacy React components (shared)
-│   ├── components/           # UI Components
-│   │   └── ui/               # shadcn/ui base components
-│   ├── routes/               # Page routes
-│   └── lib/                  # Shared utilities
-│       └── i18n/             # Translations (en, ru)
 ├── bot/                      # Telegram Bot (Grammy)
-│   ├── bot.ts                # Bot handlers and commands
-│   ├── ai.ts                 # AI expense parsing
-│   └── lambda.ts             # Lambda handler
+│   ├── bot.ts                # Bot handlers, commands, lazy init
+│   ├── ai.ts                 # Bedrock Claude integration
+│   ├── middleware.ts         # Avatar download/upload
+│   ├── lambda.ts             # Lambda webhook handler
+│   └── index.ts              # Exports
 ├── core/                     # Shared Core Packages
 │   ├── constants/            # App-wide constants
-│   ├── db/                   # Database utilities
+│   ├── db/                   # DynamoDB single-table utilities
 │   ├── session/              # Session management
-│   ├── tools/                # Shared tools/utilities
+│   ├── tools/                # JSON extraction, utilities
 │   ├── types/                # TypeScript types
-│   └── vault/                # Secrets management
+│   └── vault/                # Bot token/info retrieval
 ├── gui/react/                # React Frontend (React Router 7)
-│   └── app/                  # React application
+│   └── app/
+│       ├── components/       # UI components (shadcn/ui)
+│       ├── routes/           # Page routes (home, expenses, settle, etc.)
+│       └── lib/              # Hooks, API client, i18n
 ├── server/                   # Hono API Server
-│   └── lib/                  # Server utilities
+│   ├── index.ts              # Lambda handler
+│   └── lib/                  # Route handlers
 ├── infra/cdk/                # AWS CDK Infrastructure
-│   ├── bin/                  # CDK app entry
-│   ├── lib/stacks/           # CDK stacks
-│   └── scripts/              # Setup & deployment scripts
+│   ├── bin/infra.ts          # CDK app entry
+│   ├── lib/stacks/app.ts     # Main FractiApp stack
+│   └── scripts/setup.ts      # Bot webhook configuration
+├── scripts/
+│   └── deploy.sh             # Full deployment script
+├── tests/                    # Test files
+│   ├── gui/                  # Frontend tests
+│   └── server/               # API tests
 ├── e2e/                      # Playwright E2E Tests
-├── docs/
-│   ├── SETUP_GUIDE.md        # Complete setup instructions
-│   └── DATABASE_SCHEMA.md    # Database schema docs
-├── pnpm-workspace.yaml       # pnpm workspace config
-└── package.json
+├── .env                      # Environment variables (not committed)
+├── app.yaml                  # App configuration
+└── pnpm-workspace.yaml       # Workspace config
 ```
 
 ## Scripts
 
 ```bash
+# Full Deployment
+./scripts/deploy.sh      # Deploy everything (build + CDK + bot setup + S3)
+
 # Development
 pnpm dev                 # Start frontend (React Router dev server)
-pnpm dev:bot             # Start bot in dev mode
+pnpm dev:bot             # Start bot in polling mode
 
 # Build
 pnpm build               # Build all packages
 pnpm build:gui           # Build frontend only
 pnpm build:bot           # Build bot only
 
-# Deploy (AWS CDK)
-pnpm cdk:bootstrap       # Bootstrap CDK (first time only)
-pnpm cdk:synth           # Synthesize CloudFormation template
-pnpm cdk:deploy          # Deploy to AWS
+# CDK Commands (from infra/cdk/)
+pnpm exec cdk bootstrap  # Bootstrap AWS account (first time)
+pnpm exec cdk synth      # Generate CloudFormation template
+pnpm exec cdk deploy     # Deploy all stacks
 
-# Setup
-pnpm setup               # Interactive setup wizard
-pnpm report              # Show deployment report
+# Post-Deploy Setup (from infra/cdk/)
+pnpm exec tsx scripts/setup.ts   # Configure Telegram webhook
 
 # Quality
 pnpm typecheck           # TypeScript check (all packages)
@@ -368,7 +431,6 @@ pnpm test                # Vitest unit tests
 pnpm test:run            # Run tests once
 pnpm test:coverage       # Run tests with coverage
 pnpm test:e2e            # Playwright E2E tests
-pnpm test:e2e:ui         # Playwright with UI
 ```
 
 ## Environment Variables
@@ -387,7 +449,7 @@ pnpm test:e2e:ui         # Playwright with UI
 
 ## Roadmap
 
-- [x] AI-powered expense parsing
+- [x] AI-powered expense parsing (Claude via Bedrock)
 - [x] Receipt OCR with Claude Vision
 - [x] Automatic user tracking (all messages)
 - [x] User avatar fetching and S3 storage
@@ -396,13 +458,17 @@ pnpm test:e2e:ui         # Playwright with UI
 - [x] TON Connect wallet integration
 - [x] Min-cash-flow debt optimization
 - [x] Interactive debt graph visualization
+- [x] Group context management
+- [x] Real API integration (removed demo fixtures)
+- [x] SSR-safe client-only components
+- [x] Comprehensive test coverage
+- [x] One-command deployment script
 - [ ] Push notifications for new expenses
 - [ ] Recurring expense templates
 - [ ] Currency conversion
 - [ ] USDT Jetton support
 - [ ] Group analytics dashboard
 - [ ] Export to CSV/PDF
-- [ ] Telegram Mini App inline mode
 
 ## License
 

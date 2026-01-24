@@ -34,6 +34,7 @@ export default function AnalyticsPage() {
   }, [groupId, groupLoading])
 
   const handleExport = async (format: 'csv' | 'html', type: 'expenses' | 'settlements' | 'full') => {
+    if (!groupId) return
     setIsExporting(true)
     try {
       const blob = await api.exportGroupData(groupId, format, type)

@@ -49,7 +49,7 @@ export default function RecurringPage() {
   }, [groupId, groupLoading])
 
   const handleDelete = async (templateId: string) => {
-    if (!confirm(t('recurring.confirmDelete'))) return
+    if (!groupId || !confirm(t('recurring.confirmDelete'))) return
 
     try {
       await api.deleteRecurringTemplate(groupId, templateId)
@@ -60,6 +60,7 @@ export default function RecurringPage() {
   }
 
   const handleCreate = async (data: CreateRecurringInput) => {
+    if (!groupId) return
     try {
       const newTemplate = await api.createRecurringTemplate(groupId, data)
       setTemplates((prev) => [...prev, newTemplate])

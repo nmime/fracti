@@ -10,7 +10,7 @@ interface GroupContextValue {
   isLoading: boolean
   error: string | null
   setGroupId: (id: string) => void
-  refreshGroups: () => Promise<void>
+  refreshGroups: () => Promise<UserGroup[]>
 }
 
 const GroupContext = createContext<GroupContextValue | null>(null)
@@ -31,14 +31,14 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
   }, [initData])
 
   // Fetch user's groups
-  const refreshGroups = useCallback(async () => {
+  const refreshGroups = useCallback(async (): Promise<UserGroup[]> => {
     try {
       const groups = await api.getUserGroups()
       setUserGroups(groups)
       return groups
     } catch (err) {
       logger.error('Failed to fetch user groups', {}, err)
-      throw err
+      return []
     }
   }, [])
 

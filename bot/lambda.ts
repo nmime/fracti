@@ -1,61 +1,35 @@
-import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2, Context } from 'aws-lambda'
-import { handleUpdate } from './bot'
+import type { LambdaFunctionURLHandler } from 'aws-lambda'
+import { handleBotUpdate } from './bot'
 
-export async function handler(
-  event: APIGatewayProxyEventV2,
-  context: Context
-): Promise<APIGatewayProxyResultV2> {
+export const handler: LambdaFunctionURLHandler = async (event, context) => {
   // Don't wait for empty event loop - critical for grammY
   context.callbackWaitsForEmptyEventLoop = false
 
-  console.log('Bot Lambda invoked', {
-    path: event.rawPath,
-    method: event.requestContext.http.method,
-    hasBody: !!event.body,
-    bodyLength: event.body?.length || 0,
-  })
-
   try {
-    // Create a Request object from the Lambda event
-    const body = event.body || ''
-    const headers = new Headers()
-
-    for (const [key, value] of Object.entries(event.headers || {})) {
-      if (value) headers.set(key, value)
+    // Parse the update from request body
+    if (!event.body) {
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ok: true }),
+      }
     }
 
-    const url = `https://${event.requestContext.domainName}${event.rawPath}`
-    console.log('Creating request for URL:', url)
-
-    const request = new Request(url, {
-      method: event.requestContext.http.method,
-      headers,
-      body: event.requestContext.http.method !== 'GET' ? body : undefined,
-    })
-
-    console.log('Calling handleUpdate...')
-
-    // Handle the update using Grammy's webhook callback
-    const response = await handleUpdate(request)
-
-    console.log('handleUpdate returned, status:', response.status)
-
-    // Convert Response to Lambda response
-    const responseBody = await response.text()
-
-    console.log('Response body length:', responseBody.length)
+    const update = JSON.parse(event.body)
+    const result = await handleBotUpdate(update)
 
     return {
-      statusCode: response.status,
-      headers: Object.fromEntries(response.headers.entries()),
-      body: responseBody,
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(result),
     }
   } catch (error) {
     console.error('Bot webhook error:', error)
 
-    // Always return 200 to prevent Telegram from retrying
+    // Always return 200 to prevent Telegram retries
     return {
       statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ok: true }),
     }
   }

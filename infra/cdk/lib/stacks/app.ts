@@ -5,6 +5,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront'
 import * as cloudfrontOrigins from 'aws-cdk-lib/aws-cloudfront-origins'
+import * as apigateway from 'aws-cdk-lib/aws-apigatewayv2'
+import * as apigatewayIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2'
 import * as logs from 'aws-cdk-lib/aws-logs'
 import * as iam from 'aws-cdk-lib/aws-iam'
@@ -12,6 +14,9 @@ import { Construct } from 'constructs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
 import $ from '@core/constants'
+
+// Stack name prefix from constants
+const prefix = $.app.name
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url)
