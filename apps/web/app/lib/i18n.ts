@@ -17,6 +17,12 @@ const resources = {
       'auth.openInTelegram': 'Open in Telegram',
       'auth.footer': 'Powered by TON blockchain',
 
+      // Theme
+      'theme.toggle': 'Toggle theme',
+      'theme.light': 'Light',
+      'theme.dark': 'Dark',
+      'theme.system': 'System',
+
       // Navigation
       'nav.home': 'Home',
       'nav.expenses': 'Expenses',
@@ -252,6 +258,12 @@ const resources = {
       'auth.or': 'или',
       'auth.openInTelegram': 'Открыть в Telegram',
       'auth.footer': 'Работает на блокчейне TON',
+
+      // Theme
+      'theme.toggle': 'Переключить тему',
+      'theme.light': 'Светлая',
+      'theme.dark': 'Тёмная',
+      'theme.system': 'Системная',
 
       // Navigation
       'nav.home': 'Главная',
