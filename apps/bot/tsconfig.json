@@ -8,14 +8,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true,
     "outDir": "./dist",
+    "noImplicitAny": true,
     "paths": {
-      "@core/*": ["../../core/*"],
-      "@fracti/bot": ["../../apps/bot"],
-      "@fracti/web": ["../../apps/web"]
+      "@core/*": ["../../core/*"]
     }
   },
-  "include": ["bin/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist", "cdk.out"]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

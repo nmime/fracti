@@ -3,7 +3,7 @@
 
 app:
   stack_name: tma
-  frontend: "@gui/react"
+  frontend: "@fracti/web"
 
 aws:
   region: us-east-1

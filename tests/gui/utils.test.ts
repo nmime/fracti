@@ -9,7 +9,7 @@ describe('Frontend Utils', () => {
     let formatTON: (amount: number) => string
 
     beforeEach(async () => {
-      const mod = await import('../../gui/react/app/lib/utils')
+      const mod = await import('../../apps/web/app/lib/utils')
       formatTON = mod.formatTON
     })
 
@@ -46,7 +46,7 @@ describe('Frontend Utils', () => {
     let shortenAddress: (address: string, chars?: number) => string
 
     beforeEach(async () => {
-      const mod = await import('../../gui/react/app/lib/utils')
+      const mod = await import('../../apps/web/app/lib/utils')
       shortenAddress = mod.shortenAddress
     })
 
@@ -77,7 +77,7 @@ describe('Frontend Utils', () => {
     let generateId: () => string
 
     beforeEach(async () => {
-      const mod = await import('../../gui/react/app/lib/utils')
+      const mod = await import('../../apps/web/app/lib/utils')
       generateId = mod.generateId
     })
 
@@ -102,7 +102,7 @@ describe('Frontend Utils', () => {
     let cn: (...inputs: unknown[]) => string
 
     beforeEach(async () => {
-      const mod = await import('../../gui/react/app/lib/utils')
+      const mod = await import('../../apps/web/app/lib/utils')
       cn = mod.cn
     })
 
@@ -143,7 +143,7 @@ describe('Frontend Utils', () => {
 
     beforeEach(async () => {
       vi.useFakeTimers()
-      const mod = await import('../../gui/react/app/lib/utils')
+      const mod = await import('../../apps/web/app/lib/utils')
       debounce = mod.debounce
     })
 

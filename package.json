@@ -11,10 +11,10 @@
     "pnpm": ">=10.20.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @gui/react dev",
+    "dev": "pnpm --filter @fracti/web dev",
     "dev:bot": "pnpm --filter @fracti/bot dev",
     "build": "pnpm -r build",
-    "build:gui": "pnpm --filter @gui/react build",
+    "build:gui": "pnpm --filter @fracti/web build",
     "build:bot": "pnpm --filter @fracti/bot build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint . --ext .ts,.tsx",

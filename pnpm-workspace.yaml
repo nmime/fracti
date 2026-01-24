@@ -1,8 +1,6 @@
 packages:
   - core/**
-  - bot
-  - server
-  - gui/react
+  - apps/*
   - infra/cdk
   - scaffold
   - '!infra/**/cdk.out/**'

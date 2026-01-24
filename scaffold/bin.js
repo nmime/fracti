@@ -162,7 +162,7 @@ ${pc.bold('Geo Restrictions:')} ${config.geoBlock.length > 0 ? config.geoBlock.j
   const appYaml = {
     app: {
       stack_name: config.stackName,
-      frontend: '@gui/react',
+      frontend: '@fracti/web',
     },
     aws: {
       region: config.region,

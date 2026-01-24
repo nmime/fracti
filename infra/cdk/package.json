@@ -28,7 +28,7 @@
     "@core/tools": "workspace:*",
     "@core/vault": "workspace:*",
     "@fracti/bot": "workspace:*",
-    "@gui/react": "workspace:*",
+    "@fracti/web": "workspace:*",
     "aws-cdk-lib": "^2.234.1",
     "cdk-nag": "^2.36.0",
     "constructs": "^10.4.5",

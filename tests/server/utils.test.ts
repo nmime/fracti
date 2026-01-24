@@ -6,7 +6,7 @@ import {
   isValidTonAddress,
   isValidBase64,
   paginate,
-} from '../../server/lib/utils'
+} from '../../apps/server/lib/utils'
 
 describe('extractJSON', () => {
   it('extracts simple JSON from text', () => {

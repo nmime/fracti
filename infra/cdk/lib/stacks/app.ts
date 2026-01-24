@@ -177,7 +177,7 @@ export class FractiApp extends Construct {
       functionName: `${prefix}-bot-${stage}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
-      entry: path.join(__dirname, '../../../../bot/lambda.ts'),
+      entry: path.join(__dirname, '../../../../apps/bot/lambda.ts'),
       handler: 'handler',
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(60),
@@ -193,7 +193,7 @@ export class FractiApp extends Construct {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'server/index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../gui/react/build')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/web/build')),
       environment: {
         ...lambdaEnvironment,
         NODE_ENV: isProduction ? 'production' : 'development',
@@ -209,7 +209,7 @@ export class FractiApp extends Construct {
       functionName: `${prefix}-api-${stage}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
-      entry: path.join(__dirname, '../../../../server/index.ts'),
+      entry: path.join(__dirname, '../../../../apps/server/index.ts'),
       handler: 'handler',
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(30),
@@ -681,7 +681,7 @@ export class FractiStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../bot'), {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/bot'), {
         bundling: {
           image: lambda.Runtime.NODEJS_22_X.bundlingImage,
           command: [
@@ -704,7 +704,7 @@ export class FractiStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'server/index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../gui/react'), {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/web'), {
         bundling: {
           image: lambda.Runtime.NODEJS_22_X.bundlingImage,
           command: [

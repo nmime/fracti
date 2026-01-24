@@ -20,7 +20,7 @@ function loadAppConfig() {
   if (!fs.existsSync(configPath)) {
     // Return defaults if not found
     return {
-      app: { stack_name: 'fracti', frontend: '@gui/react' },
+      app: { stack_name: 'fracti', frontend: '@fracti/web' },
       aws: { region: 'us-east-1' },
       cdn: { waf: { enabled: true, ddos_protection: true }, geo_restrictions: { block: [] } },
       bedrock: { model: 'anthropic.claude-sonnet-4-20250514-v1:0' },
@@ -38,7 +38,7 @@ const appConfig = loadAppConfig()
 const $ = {
   app: {
     name: appConfig.app?.stack_name ?? 'fracti',
-    frontend: appConfig.app?.frontend ?? '@gui/react',
+    frontend: appConfig.app?.frontend ?? '@fracti/web',
   },
 
   aws: {

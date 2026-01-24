@@ -80,7 +80,7 @@ export class BackendStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../bot'), {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/bot'), {
         bundling: {
           image: lambda.Runtime.NODEJS_22_X.bundlingImage,
           command: [
@@ -105,7 +105,7 @@ export class BackendStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'run.sh',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../gui/react'), {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/web'), {
         bundling: {
           image: lambda.Runtime.NODEJS_22_X.bundlingImage,
           command: [

@@ -19,7 +19,7 @@ vi.mock('lucide-react', () => ({
 }))
 
 // Mock the logger
-vi.mock('../../gui/react/app/lib/logger', () => ({
+vi.mock('../../apps/web/app/lib/logger', () => ({
   logger: {
     error: vi.fn(),
     info: vi.fn(),
@@ -49,21 +49,21 @@ describe('React Components', () => {
     })
 
     it('should render expense description', async () => {
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} />)
 
       expect(screen.getByText('Lunch at restaurant')).toBeInTheDocument()
     })
 
     it('should render payer name', async () => {
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} />)
 
       expect(screen.getByText(/Paid by/)).toBeInTheDocument()
     })
 
     it('should show "You paid" when current user is payer', async () => {
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} currentUserId="user-1" />)
 
       expect(screen.getByText('Paid by you')).toBeInTheDocument()
@@ -71,14 +71,14 @@ describe('React Components', () => {
     })
 
     it('should show "You owe" amount when current user owes', async () => {
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} currentUserId="user-2" />)
 
       expect(screen.getByText(/You owe/)).toBeInTheDocument()
     })
 
     it('should render number of people in split', async () => {
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} />)
 
       expect(screen.getByText('2 people')).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('React Components', () => {
 
     it('should render delete button when onDelete provided', async () => {
       const onDelete = vi.fn()
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} onDelete={onDelete} />)
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i })
@@ -95,7 +95,7 @@ describe('React Components', () => {
 
     it('should call onDelete when delete button clicked', async () => {
       const onDelete = vi.fn()
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} onDelete={onDelete} />)
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i })
@@ -105,7 +105,7 @@ describe('React Components', () => {
     })
 
     it('should not render delete button when onDelete not provided', async () => {
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} />)
 
       const deleteButton = screen.queryByRole('button', { name: /delete expense/i })
@@ -113,7 +113,7 @@ describe('React Components', () => {
     })
 
     it('should render payer avatar initial', async () => {
-      const { ExpenseCard } = await import('../../gui/react/app/components/ExpenseCard')
+      const { ExpenseCard } = await import('../../apps/web/app/components/ExpenseCard')
       render(<ExpenseCard expense={mockExpense} />)
 
       expect(screen.getByText('A')).toBeInTheDocument()
@@ -134,7 +134,7 @@ describe('React Components', () => {
     })
 
     it('should render children when no error', async () => {
-      const { ErrorBoundary } = await import('../../gui/react/app/components/ErrorBoundary')
+      const { ErrorBoundary } = await import('../../apps/web/app/components/ErrorBoundary')
       render(
         <ErrorBoundary>
           <SafeComponent />
@@ -145,7 +145,7 @@ describe('React Components', () => {
     })
 
     it('should render error UI when child throws', async () => {
-      const { ErrorBoundary } = await import('../../gui/react/app/components/ErrorBoundary')
+      const { ErrorBoundary } = await import('../../apps/web/app/components/ErrorBoundary')
       render(
         <ErrorBoundary>
           <ThrowingComponent />
@@ -156,7 +156,7 @@ describe('React Components', () => {
     })
 
     it('should render custom fallback when provided', async () => {
-      const { ErrorBoundary } = await import('../../gui/react/app/components/ErrorBoundary')
+      const { ErrorBoundary } = await import('../../apps/web/app/components/ErrorBoundary')
       render(
         <ErrorBoundary fallback={<div>Custom fallback</div>}>
           <ThrowingComponent />
@@ -167,7 +167,7 @@ describe('React Components', () => {
     })
 
     it('should render retry button', async () => {
-      const { ErrorBoundary } = await import('../../gui/react/app/components/ErrorBoundary')
+      const { ErrorBoundary } = await import('../../apps/web/app/components/ErrorBoundary')
       render(
         <ErrorBoundary>
           <ThrowingComponent />
@@ -178,7 +178,7 @@ describe('React Components', () => {
     })
 
     it('should display error message', async () => {
-      const { ErrorBoundary } = await import('../../gui/react/app/components/ErrorBoundary')
+      const { ErrorBoundary } = await import('../../apps/web/app/components/ErrorBoundary')
       render(
         <ErrorBoundary>
           <ThrowingComponent />
@@ -192,7 +192,7 @@ describe('React Components', () => {
   describe('UI Components', () => {
     describe('Button', () => {
       it('should render button with text', async () => {
-        const { Button } = await import('../../gui/react/app/components/ui/button')
+        const { Button } = await import('../../apps/web/app/components/ui/button')
         render(<Button>Click me</Button>)
 
         expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument()
@@ -200,7 +200,7 @@ describe('React Components', () => {
 
       it('should handle click events', async () => {
         const onClick = vi.fn()
-        const { Button } = await import('../../gui/react/app/components/ui/button')
+        const { Button } = await import('../../apps/web/app/components/ui/button')
         render(<Button onClick={onClick}>Click me</Button>)
 
         fireEvent.click(screen.getByRole('button'))
@@ -208,14 +208,14 @@ describe('React Components', () => {
       })
 
       it('should be disabled when disabled prop is true', async () => {
-        const { Button } = await import('../../gui/react/app/components/ui/button')
+        const { Button } = await import('../../apps/web/app/components/ui/button')
         render(<Button disabled>Click me</Button>)
 
         expect(screen.getByRole('button')).toBeDisabled()
       })
 
       it('should apply variant classes', async () => {
-        const { Button } = await import('../../gui/react/app/components/ui/button')
+        const { Button } = await import('../../apps/web/app/components/ui/button')
         render(<Button variant="destructive">Delete</Button>)
 
         const button = screen.getByRole('button')
@@ -223,7 +223,7 @@ describe('React Components', () => {
       })
 
       it('should apply size classes', async () => {
-        const { Button } = await import('../../gui/react/app/components/ui/button')
+        const { Button } = await import('../../apps/web/app/components/ui/button')
         render(<Button size="sm">Small</Button>)
 
         const button = screen.getByRole('button')
@@ -233,7 +233,7 @@ describe('React Components', () => {
 
     describe('Card', () => {
       it('should render card with children', async () => {
-        const { Card, CardContent } = await import('../../gui/react/app/components/ui/card')
+        const { Card, CardContent } = await import('../../apps/web/app/components/ui/card')
         render(
           <Card>
             <CardContent>Card content</CardContent>
@@ -244,7 +244,7 @@ describe('React Components', () => {
       })
 
       it('should render card with header', async () => {
-        const { Card, CardHeader, CardTitle } = await import('../../gui/react/app/components/ui/card')
+        const { Card, CardHeader, CardTitle } = await import('../../apps/web/app/components/ui/card')
         render(
           <Card>
             <CardHeader>
@@ -259,7 +259,7 @@ describe('React Components', () => {
 
     describe('Input', () => {
       it('should render input', async () => {
-        const { Input } = await import('../../gui/react/app/components/ui/input')
+        const { Input } = await import('../../apps/web/app/components/ui/input')
         render(<Input placeholder="Enter text" />)
 
         expect(screen.getByPlaceholderText('Enter text')).toBeInTheDocument()
@@ -267,7 +267,7 @@ describe('React Components', () => {
 
       it('should handle value changes', async () => {
         const onChange = vi.fn()
-        const { Input } = await import('../../gui/react/app/components/ui/input')
+        const { Input } = await import('../../apps/web/app/components/ui/input')
         render(<Input onChange={onChange} />)
 
         const input = screen.getByRole('textbox')
@@ -277,7 +277,7 @@ describe('React Components', () => {
       })
 
       it('should be disabled when disabled prop is true', async () => {
-        const { Input } = await import('../../gui/react/app/components/ui/input')
+        const { Input } = await import('../../apps/web/app/components/ui/input')
         render(<Input disabled />)
 
         expect(screen.getByRole('textbox')).toBeDisabled()
@@ -286,7 +286,7 @@ describe('React Components', () => {
 
     describe('Avatar', () => {
       it('should render avatar fallback', async () => {
-        const { Avatar, AvatarFallback } = await import('../../gui/react/app/components/ui/avatar')
+        const { Avatar, AvatarFallback } = await import('../../apps/web/app/components/ui/avatar')
         render(
           <Avatar>
             <AvatarFallback>AB</AvatarFallback>
@@ -299,15 +299,15 @@ describe('React Components', () => {
 
     describe('Label', () => {
       it('should render label with text', async () => {
-        const { Label } = await import('../../gui/react/app/components/ui/label')
+        const { Label } = await import('../../apps/web/app/components/ui/label')
         render(<Label>Username</Label>)
 
         expect(screen.getByText('Username')).toBeInTheDocument()
       })
 
       it('should associate with input via htmlFor', async () => {
-        const { Label } = await import('../../gui/react/app/components/ui/label')
-        const { Input } = await import('../../gui/react/app/components/ui/input')
+        const { Label } = await import('../../apps/web/app/components/ui/label')
+        const { Input } = await import('../../apps/web/app/components/ui/input')
         render(
           <>
             <Label htmlFor="email">Email</Label>

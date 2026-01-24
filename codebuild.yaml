@@ -47,6 +47,5 @@ cache:
   paths:
     - node_modules/**/*
     - core/**/node_modules/**/*
-    - bot/node_modules/**/*
-    - gui/react/node_modules/**/*
+    - apps/**/node_modules/**/*
     - infra/cdk/node_modules/**/*

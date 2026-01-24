@@ -64,7 +64,7 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@22.19.7)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
-  bot:
+  apps/bot:
     dependencies:
       '@aws-sdk/client-bedrock-runtime':
         specifier: ^3.974.0
@@ -74,16 +74,16 @@ importers:
         version: 3.974.0
       '@core/constants':
         specifier: workspace:*
-        version: link:../core/constants
+        version: link:../../core/constants
       '@core/db':
         specifier: workspace:*
-        version: link:../core/db
+        version: link:../../core/db
       '@core/tools':
         specifier: workspace:*
-        version: link:../core/tools
+        version: link:../../core/tools
       '@core/types':
         specifier: workspace:*
-        version: link:../core/types
+        version: link:../../core/types
       '@grammyjs/validator':
         specifier: ^1.0.1
         version: 1.0.1
@@ -110,54 +110,59 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  core/constants:
+  apps/server:
     dependencies:
-      yaml:
-        specifier: ^2.7.0
-        version: 2.8.2
-
-  core/db:
-    dependencies:
+      '@aws-sdk/client-bedrock-runtime':
+        specifier: ^3.974.0
+        version: 3.974.0
       '@aws-sdk/client-dynamodb':
+        specifier: ^3.974.0
+        version: 3.974.0
+      '@aws-sdk/client-s3':
         specifier: ^3.974.0
         version: 3.974.0
       '@aws-sdk/lib-dynamodb':
         specifier: ^3.974.0
         version: 3.974.0(@aws-sdk/client-dynamodb@3.974.0)
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.974.0
+        version: 3.975.0
       '@core/constants':
         specifier: workspace:*
-        version: link:../constants
+        version: link:../../core/constants
+      '@core/db':
+        specifier: workspace:*
+        version: link:../../core/db
       '@core/types':
         specifier: workspace:*
-        version: link:../types
+        version: link:../../core/types
+      '@hono/node-server':
+        specifier: ^1.15.1
+        version: 1.19.9(hono@4.11.5)
+      '@hono/zod-validator':
+        specifier: ^0.5.0
+        version: 0.5.0(hono@4.11.5)(zod@4.3.6)
+      hono:
+        specifier: ^4.11.5
+        version: 4.11.5
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@types/aws-lambda':
+        specifier: ^8.10.148
+        version: 8.10.160
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.7
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
 
-  core/session:
-    dependencies:
-      '@core/constants':
-        specifier: workspace:*
-        version: link:../constants
-      '@core/types':
-        specifier: workspace:*
-        version: link:../types
-
-  core/tools:
-    dependencies:
-      '@core/constants':
-        specifier: workspace:*
-        version: link:../constants
-      '@core/types':
-        specifier: workspace:*
-        version: link:../types
-
-  core/types: {}
-
-  core/vault:
-    dependencies:
-      '@core/constants':
-        specifier: workspace:*
-        version: link:../constants
-
-  gui/react:
+  apps/web:
     dependencies:
       '@aws-lambda-powertools/logger':
         specifier: ^2.17.0
@@ -305,6 +310,53 @@ importers:
         specifier: ^6.0.5
         version: 6.0.5(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.7)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
 
+  core/constants:
+    dependencies:
+      yaml:
+        specifier: ^2.7.0
+        version: 2.8.2
+
+  core/db:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: ^3.974.0
+        version: 3.974.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: ^3.974.0
+        version: 3.974.0(@aws-sdk/client-dynamodb@3.974.0)
+      '@core/constants':
+        specifier: workspace:*
+        version: link:../constants
+      '@core/types':
+        specifier: workspace:*
+        version: link:../types
+
+  core/session:
+    dependencies:
+      '@core/constants':
+        specifier: workspace:*
+        version: link:../constants
+      '@core/types':
+        specifier: workspace:*
+        version: link:../types
+
+  core/tools:
+    dependencies:
+      '@core/constants':
+        specifier: workspace:*
+        version: link:../constants
+      '@core/types':
+        specifier: workspace:*
+        version: link:../types
+
+  core/types: {}
+
+  core/vault:
+    dependencies:
+      '@core/constants':
+        specifier: workspace:*
+        version: link:../constants
+
   infra/cdk:
     dependencies:
       '@aws-cdk/aws-lambda-python-alpha':
@@ -336,10 +388,10 @@ importers:
         version: link:../../core/vault
       '@fracti/bot':
         specifier: workspace:*
-        version: link:../../bot
-      '@gui/react':
+        version: link:../../apps/bot
+      '@fracti/web':
         specifier: workspace:*
-        version: link:../../gui/react
+        version: link:../../apps/web
       aws-cdk-lib:
         specifier: ^2.234.1
         version: 2.236.0(constructs@10.4.5)
@@ -380,58 +432,6 @@ importers:
       yaml:
         specifier: ^2.8.0
         version: 2.8.2
-
-  server:
-    dependencies:
-      '@aws-sdk/client-bedrock-runtime':
-        specifier: ^3.974.0
-        version: 3.974.0
-      '@aws-sdk/client-dynamodb':
-        specifier: ^3.974.0
-        version: 3.974.0
-      '@aws-sdk/client-s3':
-        specifier: ^3.974.0
-        version: 3.974.0
-      '@aws-sdk/lib-dynamodb':
-        specifier: ^3.974.0
-        version: 3.974.0(@aws-sdk/client-dynamodb@3.974.0)
-      '@aws-sdk/s3-request-presigner':
-        specifier: ^3.974.0
-        version: 3.975.0
-      '@core/constants':
-        specifier: workspace:*
-        version: link:../core/constants
-      '@core/db':
-        specifier: workspace:*
-        version: link:../core/db
-      '@core/types':
-        specifier: workspace:*
-        version: link:../core/types
-      '@hono/node-server':
-        specifier: ^1.15.1
-        version: 1.19.9(hono@4.11.5)
-      '@hono/zod-validator':
-        specifier: ^0.5.0
-        version: 0.5.0(hono@4.11.5)(zod@4.3.6)
-      hono:
-        specifier: ^4.11.5
-        version: 4.11.5
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-    devDependencies:
-      '@types/aws-lambda':
-        specifier: ^8.10.148
-        version: 8.10.160
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.7
-      tsx:
-        specifier: ^4.19.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.8.2
-        version: 5.9.3
 
 packages:
 
@@ -4320,14 +4320,14 @@ snapshots:
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/core': 3.973.0
+      '@aws-sdk/core': 3.973.1
       '@aws-sdk/credential-provider-node': 3.972.1
       '@aws-sdk/eventstream-handler-node': 3.972.1
       '@aws-sdk/middleware-eventstream': 3.972.1
       '@aws-sdk/middleware-host-header': 3.972.1
       '@aws-sdk/middleware-logger': 3.972.1
       '@aws-sdk/middleware-recursion-detection': 3.972.1
-      '@aws-sdk/middleware-user-agent': 3.972.1
+      '@aws-sdk/middleware-user-agent': 3.972.2
       '@aws-sdk/middleware-websocket': 3.972.1
       '@aws-sdk/region-config-resolver': 3.972.1
       '@aws-sdk/token-providers': 3.974.0
@@ -4466,7 +4466,7 @@ snapshots:
       '@aws-crypto/sha1-browser': 5.2.0
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/core': 3.973.0
+      '@aws-sdk/core': 3.973.1
       '@aws-sdk/credential-provider-node': 3.972.1
       '@aws-sdk/middleware-bucket-endpoint': 3.972.1
       '@aws-sdk/middleware-expect-continue': 3.972.1
@@ -4477,7 +4477,7 @@ snapshots:
       '@aws-sdk/middleware-recursion-detection': 3.972.1
       '@aws-sdk/middleware-sdk-s3': 3.972.1
       '@aws-sdk/middleware-ssec': 3.972.1
-      '@aws-sdk/middleware-user-agent': 3.972.1
+      '@aws-sdk/middleware-user-agent': 3.972.2
       '@aws-sdk/region-config-resolver': 3.972.1
       '@aws-sdk/signature-v4-multi-region': 3.972.0
       '@aws-sdk/types': 3.973.0
@@ -4835,7 +4835,7 @@ snapshots:
       '@aws-crypto/crc32': 5.2.0
       '@aws-crypto/crc32c': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/core': 3.973.0
+      '@aws-sdk/core': 3.973.1
       '@aws-sdk/crc64-nvme': 3.972.0
       '@aws-sdk/types': 3.973.0
       '@smithy/is-array-buffer': 4.2.0
@@ -4893,7 +4893,7 @@ snapshots:
 
   '@aws-sdk/middleware-sdk-s3@3.972.1':
     dependencies:
-      '@aws-sdk/core': 3.973.0
+      '@aws-sdk/core': 3.973.1
       '@aws-sdk/types': 3.973.0
       '@aws-sdk/util-arn-parser': 3.972.1
       '@smithy/core': 3.21.1

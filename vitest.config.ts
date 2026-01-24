@@ -10,8 +10,8 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     include: [
       'tests/**/*.{test,spec}.{ts,tsx}',
-      'gui/react/app/**/*.{test,spec}.{ts,tsx}',
-      'server/**/*.{test,spec}.ts',
+      'apps/web/app/**/*.{test,spec}.{ts,tsx}',
+      'apps/server/**/*.{test,spec}.ts',
       'core/**/*.{test,spec}.ts',
     ],
     exclude: [
@@ -30,8 +30,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: [
-        'gui/react/app/**/*.{ts,tsx}',
-        'server/**/*.ts',
+        'apps/web/app/**/*.{ts,tsx}',
+        'apps/server/**/*.ts',
         'core/**/*.ts',
       ],
       exclude: [
@@ -57,8 +57,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './gui/react/app'),
-      '@server': path.resolve(__dirname, './server'),
+      '@': path.resolve(__dirname, './apps/web/app'),
+      '@server': path.resolve(__dirname, './apps/server'),
       '@core': path.resolve(__dirname, './core'),
     },
   },
