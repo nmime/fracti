@@ -1,5 +1,6 @@
 // Bot instance and handlers
-export { bot, handleBotUpdate, startBot } from './bot'
+export { handleBotUpdate, startBot } from './bot'
+export type { BotResponse, BotUpdateHandler } from './bot'
 export { handler } from './lambda'
 
 // AI module

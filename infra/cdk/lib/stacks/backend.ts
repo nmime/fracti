@@ -80,16 +80,8 @@ export class BackendStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/bot'), {
-        bundling: {
-          image: lambda.Runtime.NODEJS_22_X.bundlingImage,
-          command: [
-            'bash', '-c',
-            'npm install && npm run build && cp -r dist/* /asset-output/',
-          ],
-          user: 'root',
-        },
-      }),
+      // Use pre-built dist folder - build with 'pnpm run build' before deploying
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/bot/dist')),
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(60),
       memorySize: 512,

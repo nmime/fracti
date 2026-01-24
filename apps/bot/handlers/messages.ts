@@ -9,7 +9,7 @@ import {
 } from '@core/db'
 import { extractJSON } from '@core/tools'
 import { getTranslator } from '../i18n'
-import { getMiniAppUrl } from '../lib/config'
+import { getMiniAppUrl, isWebAppUrl } from '../lib/config'
 import { getChatTitle, registerUserWithAvatar } from '../lib/helpers'
 import { downloadFile } from '../middleware'
 import {
@@ -18,6 +18,14 @@ import {
   PARSER_SYSTEM_PROMPT,
   VISION_SYSTEM_PROMPT,
 } from '../ai'
+
+// Helper to create a Mini App button with the correct type
+function addMiniAppButton(keyboard: InlineKeyboard, text: string, url: string = getMiniAppUrl()): InlineKeyboard {
+  if (isWebAppUrl(url)) {
+    return keyboard.webApp(text, url)
+  }
+  return keyboard.url(text, url)
+}
 
 async function handleExpenseMessage(ctx: Context): Promise<void> {
   const t = getTranslator(ctx)
@@ -97,7 +105,8 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
       ? t('bot.expense.splitWays', { count: splits.length, each: eachAmount })
       : ''
 
-    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
+    const keyboard = new InlineKeyboard()
+    addMiniAppButton(keyboard, t('bot.welcome.openApp'))
     const description = parsed.description || 'Expense'
 
     await ctx.reply(
@@ -171,7 +180,8 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
     }
     summary += `\n<b>${t('bot.receipt.total', { amount: receiptTotal, currency: parsed.currency ?? '' })}</b>`
 
-    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
+    const keyboard = new InlineKeyboard()
+    addMiniAppButton(keyboard, t('bot.welcome.openApp'))
 
     await ctx.reply(summary, {
       parse_mode: 'HTML',

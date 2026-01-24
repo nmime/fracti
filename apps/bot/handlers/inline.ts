@@ -1,6 +1,15 @@
 import type { Bot } from 'grammy'
 import { getGroup, getGroupsByUser } from '@core/db'
-import { getMiniAppUrl } from '../lib/config'
+import { getMiniAppUrl, isWebAppUrl } from '../lib/config'
+
+// Helper to create inline keyboard button for Mini App
+// Uses web_app for proper URLs, regular url for t.me links
+function createMiniAppButton(text: string, url: string) {
+  if (isWebAppUrl(url)) {
+    return { text, web_app: { url } }
+  }
+  return { text, url }
+}
 
 export function registerInlineHandlers(bot: Bot): void {
   bot.on('inline_query', async (ctx) => {
@@ -35,7 +44,7 @@ export function registerInlineHandlers(bot: Bot): void {
             },
             reply_markup: {
               inline_keyboard: [[
-                { text: '✅ Add Expense', web_app: { url: `${getMiniAppUrl()}?group=${groupId}&amount=${amount}&desc=${encodeURIComponent(description)}` } }
+                createMiniAppButton('✅ Add Expense', `${getMiniAppUrl()}?group=${groupId}&amount=${amount}&desc=${encodeURIComponent(description)}`)
               ]]
             },
           })

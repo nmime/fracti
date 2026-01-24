@@ -1,19 +1,29 @@
 import type { Bot } from 'grammy'
 import { InlineKeyboard } from 'grammy'
 import { getTranslator } from '../i18n'
-import { getMiniAppUrl } from '../lib/config'
+import { getMiniAppUrl, isWebAppUrl } from '../lib/config'
+
+// Helper to create a Mini App button with the correct type
+// Uses webApp button if URL is a proper HTTPS URL, otherwise falls back to url button
+function addMiniAppButton(keyboard: InlineKeyboard, text: string, url: string = getMiniAppUrl()): InlineKeyboard {
+  if (isWebAppUrl(url)) {
+    return keyboard.webApp(text, url)
+  }
+  // For t.me links, use a regular URL button
+  return keyboard.url(text, url)
+}
 
 export function registerCommandHandlers(bot: Bot): void {
   // Command: /start
   bot.command('start', async (ctx) => {
+    console.log('/start command triggered, chat type:', ctx.chat?.type)
     const t = getTranslator(ctx)
     const chatType = ctx.chat?.type
 
     if (chatType === 'private') {
       const keyboard = new InlineKeyboard()
-        .webApp(t('bot.welcome.openApp'), getMiniAppUrl())
-        .row()
-        .url('Add to Group', `https://t.me/${ctx.me.username}?startgroup=true`)
+      addMiniAppButton(keyboard, t('bot.welcome.openApp'))
+      keyboard.row().url('Add to Group', `https://t.me/${ctx.me.username}?startgroup=true`)
 
       await ctx.reply(
         `👋 ${t('bot.welcome.private')}\n\n` +
@@ -30,7 +40,8 @@ export function registerCommandHandlers(bot: Bot): void {
         }
       )
     } else {
-      const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
+      const keyboard = new InlineKeyboard()
+      addMiniAppButton(keyboard, t('bot.welcome.openApp'))
 
       await ctx.reply(
         `💰 ${t('bot.welcome.group')}\n\n` +
@@ -51,7 +62,8 @@ export function registerCommandHandlers(bot: Bot): void {
   // Command: /help
   bot.command('help', async (ctx) => {
     const t = getTranslator(ctx)
-    const keyboard = new InlineKeyboard().webApp(t('bot.welcome.openApp'), getMiniAppUrl())
+    const keyboard = new InlineKeyboard()
+    addMiniAppButton(keyboard, t('bot.welcome.openApp'))
 
     await ctx.reply(
       `💰 ${t('bot.help.title')}\n\n` +
@@ -74,21 +86,24 @@ export function registerCommandHandlers(bot: Bot): void {
   // Command: /balance
   bot.command('balance', async (ctx) => {
     const t = getTranslator(ctx)
-    const keyboard = new InlineKeyboard().webApp(t('bot.balance.title'), getMiniAppUrl())
+    const keyboard = new InlineKeyboard()
+    addMiniAppButton(keyboard, t('bot.balance.title'))
     await ctx.reply(`📊 ${t('bot.balance.openApp')}`, { reply_markup: keyboard })
   })
 
   // Command: /expenses
   bot.command('expenses', async (ctx) => {
     const t = getTranslator(ctx)
-    const keyboard = new InlineKeyboard().webApp(t('bot.expenses.title'), getMiniAppUrl())
+    const keyboard = new InlineKeyboard()
+    addMiniAppButton(keyboard, t('bot.expenses.title'))
     await ctx.reply(`📝 ${t('bot.expenses.openApp')}`, { reply_markup: keyboard })
   })
 
   // Command: /settle
   bot.command('settle', async (ctx) => {
     const t = getTranslator(ctx)
-    const keyboard = new InlineKeyboard().webApp(t('bot.settle.title'), getMiniAppUrl())
+    const keyboard = new InlineKeyboard()
+    addMiniAppButton(keyboard, t('bot.settle.title'))
     await ctx.reply(`💸 ${t('bot.settle.openApp')}`, { reply_markup: keyboard })
   })
 

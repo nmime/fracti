@@ -6,7 +6,8 @@ export const handler: LambdaFunctionURLHandler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false
 
   try {
-    // Parse the update from request body
+    console.log('Telegram: Incoming update', { bodyLength: event.body?.length || 0 })
+
     if (!event.body) {
       return {
         statusCode: 200,
@@ -16,17 +17,21 @@ export const handler: LambdaFunctionURLHandler = async (event, context) => {
     }
 
     const update = JSON.parse(event.body)
-    const result = await handleBotUpdate(update)
+    await handleBotUpdate(update)
 
+    // Always return 200 OK - message is sent via direct API call
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(result),
+      body: JSON.stringify({ ok: true }),
     }
   } catch (error) {
-    console.error('Bot webhook error:', error)
+    console.error('Telegram Bot Lambda: Error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
 
-    // Always return 200 to prevent Telegram retries
+    // Return 200 to prevent Telegram retries
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },

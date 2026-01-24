@@ -173,9 +173,10 @@ export class FractiApp extends Construct {
     }
 
     // Bot Lambda Function
+    // Using Node.js 20 to avoid AbortSignal compatibility issues with grammY in Node.js 22
     const botFunction = new lambdaNodejs.NodejsFunction(mainStack, 'BotFunction', {
       functionName: `${prefix}-bot-${stage}`,
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_20_X,
       architecture: lambda.Architecture.ARM_64,
       entry: path.join(__dirname, '../../../../apps/bot/lambda.ts'),
       handler: 'handler',
