@@ -9,7 +9,7 @@ import {
 import type { Route } from "./+types/root"
 import { TonConnectUIProvider } from "@tonconnect/ui-react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ErrorBoundary } from "react-error-boundary"
+import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary"
 import { TelegramProvider } from "@/lib/telegram"
 import "./styles/tailwind.css"
 
@@ -71,12 +71,13 @@ function AppProviders({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ErrorFallback({ error }: { error: Error }) {
+function ErrorFallback({ error }: { error: unknown }) {
+  const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="text-center max-w-md">
         <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
-        <p className="text-muted-foreground mb-4">{error.message}</p>
+        <p className="text-muted-foreground mb-4">{errorMessage}</p>
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
@@ -90,11 +91,11 @@ function ErrorFallback({ error }: { error: Error }) {
 
 export default function App() {
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <ReactErrorBoundary FallbackComponent={ErrorFallback}>
       <AppProviders>
         <Outlet />
       </AppProviders>
-    </ErrorBoundary>
+    </ReactErrorBoundary>
   )
 }
 

@@ -81,7 +81,7 @@ export async function getFileUrl(fileId: string): Promise<string | null> {
 
     if (!response.ok) return null
 
-    const data = await response.json()
+    const data = await response.json() as { ok: boolean; result?: { file_path?: string } }
     if (!data.ok || !data.result?.file_path) return null
 
     return `https://api.telegram.org/file/bot${botToken}/${data.result.file_path}`
@@ -121,7 +121,7 @@ export async function getUserProfilePhoto(userId: number): Promise<string | null
 
     if (!response.ok) return null
 
-    const data = await response.json()
+    const data = await response.json() as { ok: boolean; result?: { photos?: Array<Array<{ file_id: string }>> } }
     if (!data.ok || !data.result?.photos?.length) return null
 
     const photo = data.result.photos[0]

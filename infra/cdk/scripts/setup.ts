@@ -47,7 +47,7 @@ async function telegramApi<T>(
     body: params ? JSON.stringify(params) : undefined,
   })
 
-  const data = await response.json()
+  const data = await response.json() as { ok: boolean; description?: string; result?: T }
 
   if (!data.ok) {
     throw new Error(`Telegram API error: ${data.description}`)

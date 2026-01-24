@@ -28,8 +28,9 @@ export function DeviceSensors() {
 
   // Start gyroscope
   const startGyroscope = useCallback(() => {
-    if (isTelegram && WebApp.Gyroscope) {
-      WebApp.Gyroscope.start({ refresh_rate: 100 })
+    const gyro = (WebApp as unknown as { Gyroscope?: { start: (opts: { refresh_rate: number }) => void; stop: () => void } }).Gyroscope
+    if (isTelegram && gyro) {
+      gyro.start({ refresh_rate: 100 })
       setGyroscopeEnabled(true)
     } else {
       // Fallback to DeviceOrientation API
@@ -39,8 +40,9 @@ export function DeviceSensors() {
 
   // Stop gyroscope
   const stopGyroscope = useCallback(() => {
-    if (isTelegram && WebApp.Gyroscope) {
-      WebApp.Gyroscope.stop()
+    const gyro = (WebApp as unknown as { Gyroscope?: { start: (opts: { refresh_rate: number }) => void; stop: () => void } }).Gyroscope
+    if (isTelegram && gyro) {
+      gyro.stop()
     }
     setGyroscopeEnabled(false)
   }, [isTelegram])
@@ -73,9 +75,13 @@ export function DeviceSensors() {
       const { x = 0, y = 0, z = 0 } = acceleration
       const last = lastAcceleration.current
 
-      const deltaX = Math.abs(x - last.x)
-      const deltaY = Math.abs(y - last.y)
-      const deltaZ = Math.abs(z - last.z)
+      const safeX = x ?? 0
+      const safeY = y ?? 0
+      const safeZ = z ?? 0
+
+      const deltaX = Math.abs(safeX - last.x)
+      const deltaY = Math.abs(safeY - last.y)
+      const deltaZ = Math.abs(safeZ - last.z)
 
       if (deltaX + deltaY + deltaZ > SHAKE_THRESHOLD) {
         setShakeDetected(true)
@@ -83,7 +89,7 @@ export function DeviceSensors() {
         setTimeout(() => setShakeDetected(false), 500)
       }
 
-      lastAcceleration.current = { x, y, z }
+      lastAcceleration.current = { x: safeX, y: safeY, z: safeZ }
     }
 
     if (gyroscopeEnabled) {
@@ -137,8 +143,9 @@ export function DeviceSensors() {
       if (watchId.current !== null) {
         navigator.geolocation.clearWatch(watchId.current)
       }
-      if (gyroscopeEnabled && isTelegram && WebApp.Gyroscope) {
-        WebApp.Gyroscope.stop()
+      const gyro = (WebApp as unknown as { Gyroscope?: { start: (opts: { refresh_rate: number }) => void; stop: () => void } }).Gyroscope
+      if (gyroscopeEnabled && isTelegram && gyro) {
+        gyro.stop()
       }
     }
   }, [gyroscopeEnabled, isTelegram])

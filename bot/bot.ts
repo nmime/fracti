@@ -446,7 +446,7 @@ async function handleExpenseMessage(ctx: Context): Promise<void> {
   } catch {
     // Silent fail for expense parsing
   }
-})
+}
 
 async function handlePhotoMessage(ctx: Context): Promise<void> {
   const t = getT(ctx)
@@ -495,7 +495,7 @@ async function handlePhotoMessage(ctx: Context): Promise<void> {
       return
     }
 
-    const receiptTotal = parsed.total ?? parsed.items.reduce((sum, item) => sum + item.price, 0)
+    const receiptTotal = parsed.total ?? parsed.items.reduce((sum: number, item: { name: string; price: number }) => sum + item.price, 0)
 
     let summary = `🧾 ${t('bot.receipt.success', { merchant: parsed.merchant || 'Receipt' })}\n\n`
     for (const item of parsed.items.slice(0, 8)) {
