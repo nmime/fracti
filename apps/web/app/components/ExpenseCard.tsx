@@ -1,6 +1,6 @@
 import { Trash2, Users } from 'lucide-react'
-import type { Expense } from '@/lib/api'
-import { formatTON } from '@/lib/utils'
+import type { Expense } from '@/services'
+import { formatTON } from '@/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'

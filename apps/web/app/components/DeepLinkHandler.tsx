@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router'
-import { useTelegram } from '@/lib/telegram'
-import { logger } from '@/lib/logger'
+import { useTelegram } from '@/providers'
+import { logger } from '@/utils'
 
 /**
  * Handles deep link routing from Telegram bot commands

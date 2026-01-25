@@ -1,7 +1,7 @@
 import type { Bot } from 'grammy'
 import { InlineKeyboard } from 'grammy'
 import { getTranslator } from '../i18n'
-import { getMiniAppUrl, isWebAppUrl } from '../lib/config'
+import { getMiniAppUrl, isWebAppUrl } from '../config'
 
 // Helper to create a Mini App button with the correct type
 // Uses webApp button if URL is a proper HTTPS URL, otherwise falls back to url button

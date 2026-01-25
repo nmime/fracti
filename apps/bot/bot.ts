@@ -1,7 +1,7 @@
 import type { Update } from 'grammy/types'
 import type { PollingOptions } from 'grammy'
 import { Bot } from 'grammy'
-import { getBotToken, BOT_INFO } from './lib/config'
+import { getBotToken, BOT_INFO } from './config'
 import { setupBotHandlers } from './handlers'
 
 // Custom fetch that removes AbortSignal to fix Lambda compatibility issue

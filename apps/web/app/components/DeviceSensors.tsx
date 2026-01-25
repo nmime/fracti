@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import WebApp from '@twa-dev/sdk'
-import { useTelegram } from '@/lib/telegram'
+import { useTelegram } from '@/providers'
 
 interface OrientationData {
   alpha: number // Z-axis rotation (0-360)

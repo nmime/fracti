@@ -1,9 +1,12 @@
 import type { Bot } from 'grammy'
 import { getGroup, getGroupsByUser } from '@core/db'
-import { getMiniAppUrl, isWebAppUrl } from '../lib/config'
+import { getMiniAppUrl, isWebAppUrl } from '../config'
+
+/**
+ * Inline query handlers for the Telegram bot
+ */
 
 // Helper to create inline keyboard button for Mini App
-// Uses web_app for proper URLs, regular url for t.me links
 function createMiniAppButton(text: string, url: string) {
   if (isWebAppUrl(url)) {
     return { text, web_app: { url } }

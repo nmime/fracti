@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, { type ForceGraphMethods, type NodeObject, type LinkObject } from 'react-force-graph-2d'
-import type { DebtGraph as DebtGraphType } from '@/lib/api'
-import { formatTON } from '@/lib/utils'
+import type { DebtGraph as DebtGraphType } from '@/services'
+import { formatTON } from '@/utils'
 
 interface GraphNode {
   id: string

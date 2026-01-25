@@ -1,19 +1,32 @@
+/**
+ * Bot main exports
+ */
+
 // Bot instance and handlers
 export { handleBotUpdate, startBot } from './bot'
 export type { BotResponse, BotUpdateHandler } from './bot'
 export { handler } from './lambda'
 
-// AI module
-export * from './ai'
+// Config
+export * from './config'
 
-// Middleware (S3 & Telegram utilities)
-export * from './middleware'
+// Services
+export * from './services'
 
-// I18n (translations)
+// Integrations
+export * from './integrations'
+
+// Schemas
+export * from './schemas'
+
+// Types
+export * from './types'
+
+// Utils
+export * from './utils'
+
+// I18n
 export * from './i18n'
 
-// Lib (config & helpers)
-export * from './lib'
-
-// Handlers (for extension)
+// Handlers
 export { setupBotHandlers } from './handlers'

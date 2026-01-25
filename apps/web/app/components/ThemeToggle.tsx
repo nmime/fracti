@@ -1,8 +1,7 @@
 import { Moon, Sun, Monitor } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useTheme } from '@/lib/theme'
-import { useTelegram } from '@/lib/telegram'
-import { cn } from '@/lib/utils'
+import { useTheme, useTelegram } from '@/providers'
+import { cn } from '@/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
