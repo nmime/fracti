@@ -9,10 +9,7 @@ import {
 import type { Route } from "./+types/root"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary"
-import { TelegramProvider } from "@/lib/telegram"
-import { ThemeProvider } from "@/lib/theme"
-import { AuthProvider } from "@/lib/auth"
-import { GroupProvider } from "@/lib/group-context"
+import { TelegramProvider, ThemeProvider, AuthProvider, GroupProvider } from "@/providers"
 import { ClientOnly } from "@/components/ClientOnly"
 // TonConnect is loaded only on client via .client.tsx file
 import { TonConnectProvider } from "@/components/TonConnectProvider.client"

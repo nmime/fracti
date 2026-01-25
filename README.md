@@ -365,12 +365,44 @@ pnpm dev:bot
 
 ```
 fracti/                       # pnpm Monorepo
-├── bot/                      # Telegram Bot (Grammy)
-│   ├── bot.ts                # Bot handlers, commands, lazy init
-│   ├── ai.ts                 # Bedrock Claude integration
-│   ├── middleware.ts         # Avatar download/upload
-│   ├── lambda.ts             # Lambda webhook handler
-│   └── index.ts              # Exports
+├── apps/                     # Applications
+│   ├── bot/                  # Telegram Bot (Grammy)
+│   │   ├── config/           # Bot configuration
+│   │   ├── handlers/         # Command & message handlers
+│   │   ├── services/         # Business logic (AI, expenses, users)
+│   │   ├── integrations/     # External services (Bedrock, S3, Telegram)
+│   │   ├── schemas/          # Zod validation schemas
+│   │   ├── types/            # TypeScript type definitions
+│   │   ├── utils/            # Utilities (cache, retry, currency)
+│   │   ├── i18n/             # Internationalization (EN, RU)
+│   │   ├── bot.ts            # Bot creation & lazy init
+│   │   ├── lambda.ts         # Lambda webhook handler
+│   │   └── index.ts          # Exports
+│   │
+│   ├── web/                  # React Frontend (React Router 7)
+│   │   └── app/
+│   │       ├── providers/    # Context providers (Auth, Theme, Group, Telegram)
+│   │       ├── services/     # API client
+│   │       ├── hooks/        # Custom hooks (useTonPayment)
+│   │       ├── utils/        # Utilities (cn, format, logger)
+│   │       ├── constants/    # App constants (TON)
+│   │       ├── config/       # Validated configuration
+│   │       ├── features/     # Feature components (expenses, settlements)
+│   │       ├── components/   # Shared UI components (shadcn/ui)
+│   │       ├── fixtures/     # Demo data for development
+│   │       └── routes/       # Page routes
+│   │
+│   └── server/               # Hono API Server
+│       ├── routes/           # Route definitions
+│       ├── controllers/      # Request handlers
+│       ├── services/         # Business logic
+│       ├── repositories/     # Data access layer
+│       ├── schemas/          # Zod validation schemas
+│       ├── middleware/       # Auth, rate limiting
+│       ├── integrations/     # External services
+│       ├── types/            # TypeScript types
+│       └── utils/            # Utilities
+│
 ├── core/                     # Shared Core Packages
 │   ├── constants/            # App-wide constants
 │   ├── db/                   # DynamoDB single-table utilities
@@ -378,19 +410,13 @@ fracti/                       # pnpm Monorepo
 │   ├── tools/                # JSON extraction, utilities
 │   ├── types/                # TypeScript types
 │   └── vault/                # Bot token/info retrieval
-├── gui/react/                # React Frontend (React Router 7)
-│   └── app/
-│       ├── components/       # UI components (shadcn/ui)
-│       ├── routes/           # Page routes (home, expenses, settle, etc.)
-│       └── lib/              # Hooks, API client, i18n
-├── server/                   # Hono API Server
-│   ├── index.ts              # Lambda handler
-│   └── lib/                  # Route handlers
+│
 ├── infra/cdk/                # AWS CDK Infrastructure
 │   ├── bin/infra.ts          # CDK app entry
-│   ├── lib/stacks/app.ts     # Main FractiApp stack
+│   ├── lib/stacks/           # CDK stacks
 │   └── scripts/setup.ts      # Bot webhook configuration
-├── scripts/
+│
+├── scripts/                  # Utility scripts
 │   └── deploy.sh             # Full deployment script
 ├── tests/                    # Test files
 │   ├── gui/                  # Frontend tests

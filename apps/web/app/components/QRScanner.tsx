@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useTelegram } from '@/lib/telegram'
+import { useTelegram } from '@/providers'
 
 interface ScanResult {
   data: string

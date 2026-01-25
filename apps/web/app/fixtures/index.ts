@@ -2,7 +2,7 @@
  * Development/Demo fixtures for testing and local development.
  * In production, data is fetched from the API.
  */
-import type { DebtGraph, Group, Expense, Settlement, User, ParsedReceipt } from '@/lib/api'
+import type { DebtGraph, Group, Expense, Settlement, User, ParsedReceipt } from '@/services'
 
 /**
  * Demo user for development mode (when not in Telegram WebApp)

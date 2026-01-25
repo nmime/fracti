@@ -1,4 +1,4 @@
-import { useTelegram } from '@/lib/telegram'
+import { useTelegram } from '@/providers'
 
 export function meta() {
   return [

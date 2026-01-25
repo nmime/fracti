@@ -1,4 +1,4 @@
-import { RequireAuth } from '@/lib/auth'
+import { RequireAuth } from '@/providers'
 import RootLayout from '@/components/RootLayout'
 
 /**

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useTelegram } from '@/lib/telegram'
+import { useTelegram } from '@/providers'
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ClientOnly } from '@/components/ClientOnly'

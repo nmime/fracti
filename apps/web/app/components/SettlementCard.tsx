@@ -1,6 +1,6 @@
 import { ArrowRight, Check, Clock, X } from 'lucide-react'
-import type { Settlement } from '@/lib/api'
-import { formatTON, shortenAddress } from '@/lib/utils'
+import type { Settlement } from '@/services'
+import { formatTON, shortenAddress } from '@/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'

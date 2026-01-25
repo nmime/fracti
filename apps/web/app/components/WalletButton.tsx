@@ -1,5 +1,5 @@
 import { Wallet, LogOut } from 'lucide-react'
-import { useTonPayment, useFormattedAddress } from '@/lib/ton'
+import { useTonPayment, useFormattedAddress } from '@/hooks'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

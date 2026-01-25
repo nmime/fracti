@@ -12,9 +12,8 @@ import {
   Menu,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import { useTelegram } from '@/lib/telegram'
-import { useGroup } from '@/lib/group-context'
+import { cn } from '@/utils'
+import { useTelegram, useGroup } from '@/providers'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 
