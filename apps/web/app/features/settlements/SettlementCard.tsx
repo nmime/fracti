@@ -1,4 +1,7 @@
-import { ArrowRight, Check, Clock, X } from 'lucide-react'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right'
+import Check from 'lucide-react/dist/esm/icons/check'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import X from 'lucide-react/dist/esm/icons/x'
 import type { Settlement } from '@/services/api'
 import { formatTON, shortenAddress } from '@/utils'
 import { Card, CardContent } from '@/components/ui/card'
