@@ -357,18 +357,18 @@ export default function SettlePage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3">
-          <Card className="border-red-200 bg-red-50/50">
+          <Card className="border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{t('settle.youOwe')}</p>
-              <p className="text-xl font-bold text-red-600">
+              <p className="text-xl font-bold text-red-600 dark:text-red-400">
                 {formatTON(totalOwed)} TON
               </p>
             </CardContent>
           </Card>
-          <Card className="border-green-200 bg-green-50/50">
+          <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{t('settle.youllReceive')}</p>
-              <p className="text-xl font-bold text-green-600">
+              <p className="text-xl font-bold text-green-600 dark:text-green-400">
                 {formatTON(totalToReceive)} TON
               </p>
             </CardContent>
@@ -405,11 +405,11 @@ export default function SettlePage() {
         )}
 
         {!isConnected && (
-          <Card className="border-yellow-200 bg-yellow-50">
+          <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30">
             <CardContent className="flex items-center gap-3 p-4">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-800">
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
                   {t('settle.connectWallet')}
                 </p>
               </div>
@@ -450,10 +450,10 @@ export default function SettlePage() {
           )}
 
           {!isLoading && pendingSettlements.length === 0 && (
-            <Card className="border-green-200 bg-green-50/50">
+            <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30">
               <CardContent className="flex flex-col items-center gap-2 py-8">
                 <CheckCircle className="h-12 w-12 text-green-500" />
-                <p className="font-medium text-green-700">{t('settle.allSettled.title')}</p>
+                <p className="font-medium text-green-700 dark:text-green-400">{t('settle.allSettled.title')}</p>
                 <p className="text-sm text-muted-foreground">
                   {t('settle.allSettled.description')}
                 </p>
