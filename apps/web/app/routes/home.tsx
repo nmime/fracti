@@ -109,22 +109,22 @@ export default function HomePage() {
       </div>
 
       {/* Balance Card */}
-      <Card className={isOwed ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}>
+      <Card className={isOwed ? 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30' : 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30'}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
                 {isOwed ? t('home.youAreOwed') : t('home.youOwe')}
               </p>
-              <p className={`text-3xl font-bold ${isOwed ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-3xl font-bold ${isOwed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {formatTON(Math.abs(userBalance))} TON
               </p>
             </div>
-            <div className={`rounded-full p-3 ${isOwed ? 'bg-green-100' : 'bg-red-100'}`}>
+            <div className={`rounded-full p-3 ${isOwed ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
               {isOwed ? (
-                <TrendingUp className="h-6 w-6 text-green-600" />
+                <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
               ) : (
-                <TrendingDown className="h-6 w-6 text-red-600" />
+                <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
               )}
             </div>
           </div>
