@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, TrendingUp, TrendingDown, Users, Receipt, ChevronLeft } from 'lucide-react'
 import { useTelegram, useGroup } from '@/providers'
 import { type DebtGraph as DebtGraphType, type UserActivityItem, api } from '@/services'
 import { formatTON, logger } from '@/utils'
-import { DebtGraph } from '@/components/DebtGraph'
+const DebtGraph = lazy(() => import('@/components/DebtGraph').then(module => ({ default: module.DebtGraph })))
 import { UserDashboard } from '@/components/UserDashboard'
 import { WalletButton } from '@/components/WalletButton'
 import { Button } from '@/components/ui/button'
@@ -152,10 +152,18 @@ export default function HomePage() {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
           ) : debtGraph ? (
-            <DebtGraph
-              data={debtGraph}
-              onNodeClick={(node) => logger.debug('Node clicked', { nodeId: node.id })}
-            />
+            <Suspense
+              fallback={
+                <div className="flex h-[300px] items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                </div>
+              }
+            >
+              <DebtGraph
+                data={debtGraph}
+                onNodeClick={(node) => logger.debug('Node clicked', { nodeId: node.id })}
+              />
+            </Suspense>
           ) : (
             <div className="flex h-[200px] items-center justify-center text-muted-foreground">
               {t('home.noDebts')}
