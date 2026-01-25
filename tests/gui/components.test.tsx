@@ -10,12 +10,18 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-// Mock lucide-react
-vi.mock('lucide-react', () => ({
-  AlertTriangle: () => <div data-testid="alert-icon" />,
-  RefreshCw: () => <div data-testid="refresh-icon" />,
-  Trash2: () => <div data-testid="trash-icon" />,
-  Users: () => <div data-testid="users-icon" />,
+// Mock lucide-react deep imports
+vi.mock('lucide-react/dist/esm/icons/alert-triangle', () => ({
+  default: () => <div data-testid="alert-icon" />,
+}))
+vi.mock('lucide-react/dist/esm/icons/refresh-cw', () => ({
+  default: () => <div data-testid="refresh-icon" />,
+}))
+vi.mock('lucide-react/dist/esm/icons/trash-2', () => ({
+  default: () => <div data-testid="trash-icon" />,
+}))
+vi.mock('lucide-react/dist/esm/icons/users', () => ({
+  default: () => <div data-testid="users-icon" />,
 }))
 
 // Mock the logger
