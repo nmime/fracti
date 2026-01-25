@@ -1,4 +1,5 @@
-import { Trash2, Users } from 'lucide-react'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Users from 'lucide-react/dist/esm/icons/users'
 import type { Expense } from '@/services'
 import { formatTON } from '@/utils'
 import { Card, CardContent } from '@/components/ui/card'

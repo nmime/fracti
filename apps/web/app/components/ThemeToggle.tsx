@@ -1,4 +1,6 @@
-import { Moon, Sun, Monitor } from 'lucide-react'
+import Moon from 'lucide-react/dist/esm/icons/moon'
+import Sun from 'lucide-react/dist/esm/icons/sun'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
 import { useTranslation } from 'react-i18next'
 import { useTheme, useTelegram } from '@/providers'
 import { cn } from '@/utils'

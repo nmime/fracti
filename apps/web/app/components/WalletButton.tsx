@@ -1,4 +1,5 @@
-import { Wallet, LogOut } from 'lucide-react'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import LogOut from 'lucide-react/dist/esm/icons/log-out'
 import { useTonPayment, useFormattedAddress } from '@/hooks'
 import { Button } from '@/components/ui/button'
 import {

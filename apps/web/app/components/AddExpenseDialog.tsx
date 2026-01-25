@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, Users } from 'lucide-react'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Users from 'lucide-react/dist/esm/icons/users'
 import type { User, CreateExpenseInput } from '@/services'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

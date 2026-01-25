@@ -1,16 +1,14 @@
 import { useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
-import {
-  Home,
-  Receipt,
-  Wallet,
-  Camera,
-  BarChart3,
-  RefreshCw,
-  MoreHorizontal,
-  X,
-  Menu,
-} from 'lucide-react'
+import Home from 'lucide-react/dist/esm/icons/home'
+import Receipt from 'lucide-react/dist/esm/icons/receipt'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal'
+import X from 'lucide-react/dist/esm/icons/x'
+import Menu from 'lucide-react/dist/esm/icons/menu'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils'
 import { useTelegram, useGroup } from '@/providers'

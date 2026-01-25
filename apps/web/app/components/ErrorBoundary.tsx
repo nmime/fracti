@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { logger } from '@/utils'
