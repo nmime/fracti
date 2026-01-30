@@ -30,11 +30,41 @@ export { claudeResponseSchema, parsedExpenseSchema, parsedReceiptSchema, receipt
 // System prompts
 export { PARSER_SYSTEM_PROMPT, VISION_SYSTEM_PROMPT } from './prompts';
 
-// Bedrock client
+// Unified client with lazy initialization (recommended)
 export {
-  initBedrock,
+  initAIClient,
+  getProvider,
   invokeClaudeText,
   invokeClaudeVision,
   parseExpenseWithFallback,
   parseReceiptWithFallback,
+} from './client';
+
+// Legacy: Direct Bedrock client (AWS)
+export {
+  initBedrock,
+  invokeClaudeText as invokeClaudeTextBedrock,
+  invokeClaudeVision as invokeClaudeVisionBedrock,
+  parseExpenseWithFallback as parseExpenseWithFallbackBedrock,
+  parseReceiptWithFallback as parseReceiptWithFallbackBedrock,
 } from './bedrock';
+
+// Legacy: Direct Anthropic client (self-hosted)
+export {
+  initAnthropic,
+  initAnthropicFromEnv,
+  invokeClaudeText as invokeClaudeTextAnthropic,
+  invokeClaudeVision as invokeClaudeVisionAnthropic,
+  parseExpenseWithFallback as parseExpenseWithFallbackAnthropic,
+  parseReceiptWithFallback as parseReceiptWithFallbackAnthropic,
+} from './anthropic';
+
+// GPT4Free client (free, no API key required)
+export {
+  initG4F,
+  initG4FFromEnv,
+  invokeClaudeText as invokeClaudeTextG4F,
+  invokeClaudeVision as invokeClaudeVisionG4F,
+  parseExpenseWithFallback as parseExpenseWithFallbackG4F,
+  parseReceiptWithFallback as parseReceiptWithFallbackG4F,
+} from './g4f';

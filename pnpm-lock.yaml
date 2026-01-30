@@ -11,6 +11,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.9.0
         version: 0.9.1
+      '@gpt4free/g4f.dev':
+        specifier: ^1.1.2
+        version: 1.1.2
       cross-spawn:
         specifier: ^7.0.6
         version: 7.0.6
@@ -1551,6 +1554,9 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@gpt4free/g4f.dev@1.1.2':
+    resolution: {integrity: sha512-ncCXCBixJZySDgznA3VeoHL22wwE412EAj4yeWX+A66cXu4vqgvdpMQjxhQfpqRIgRsWa+4cX2Y7iivdY6NqwQ==}
 
   '@grammyjs/types@3.23.0':
     resolution: {integrity: sha512-D3jQ4UWERPsyR3op/YFudMMIPNTU47vy7L51uO9/73tMELmjO/+LX5N36/Y0CG5IQfIsz43MxiHI5rgsK0/k+g==}
@@ -7089,6 +7095,8 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@gpt4free/g4f.dev@1.1.2': {}
 
   '@grammyjs/types@3.23.0': {}
 
