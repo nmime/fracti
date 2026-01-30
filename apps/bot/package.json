@@ -1,0 +1,35 @@
+{
+  "name": "@fracti/bot",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./lambda": "./dist/lambda.js"
+  },
+  "license": "MIT-0",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch dev.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@libs/ai": "workspace:*",
+    "@libs/constants": "workspace:*",
+    "@libs/db": "workspace:*",
+    "@libs/integrations": "workspace:*",
+    "@libs/types": "workspace:*",
+    "@libs/tools": "workspace:*",
+    "grammy": "^1.39.3",
+    "hono": "^4.11.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.151",
+    "@types/node": "^22.15.0",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}

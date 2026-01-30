@@ -1,0 +1,19 @@
+{
+  "name": "@fracti/scaffold",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT-0",
+  "bin": {
+    "fracti": "./bin.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "dependencies": {
+    "@clack/prompts": "^0.10.1",
+    "cross-spawn": "^7.0.6",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.8.0"
+  }
+}

@@ -1,0 +1,360 @@
+{
+  "auth": {
+    "welcome": "Добро пожаловать в Fracti",
+    "subtitle": "Делите расходы с друзьями. Просто, быстро, на блокчейне TON.",
+    "authenticating": "Авторизация...",
+    "feature": {
+      "track": "Учёт расходов",
+      "split": "Делите с друзьями",
+      "settle": "Оплата в TON",
+      "ai": "ИИ-сканер чеков"
+    },
+    "or": "или",
+    "openInTelegram": "Открыть в Telegram",
+    "footer": "Работает на блокчейне TON"
+  },
+  "theme": {
+    "toggle": "Переключить тему",
+    "light": "Светлая",
+    "dark": "Тёмная",
+    "system": "Системная"
+  },
+  "nav": {
+    "home": "Главная",
+    "expenses": "Расходы",
+    "scan": "Скан",
+    "settle": "Расчёт",
+    "analytics": "Аналитика",
+    "recurring": "Регулярные",
+    "more": "Ещё"
+  },
+  "home": {
+    "greeting": "Привет, {{name}}!",
+    "youAreOwed": "Тебе должны",
+    "youOwe": "Ты должен",
+    "allSettled": "Всё погашено!",
+    "settleUp": "Погасить",
+    "debtWeb": "Долги",
+    "expenses": "Расходы",
+    "members": "Участники",
+    "recentActivity": "Последние операции",
+    "viewAll": "Все",
+    "paid": "заплатил",
+    "for": "за",
+    "hoursAgo": "{{count}}ч назад",
+    "daysAgo": "{{count}}д назад",
+    "justNow": "Только что",
+    "noActivity": "Нет недавних операций",
+    "noDebts": "Пока нет долгов",
+    "noGroup": {
+      "title": "Группа не выбрана",
+      "description": "Откройте приложение из группового чата Telegram"
+    },
+    "allGroups": "Все группы"
+  },
+  "userDashboard": {
+    "greeting": "Привет, {{name}}!",
+    "subtitle": "Обзор расходов",
+    "totalBalance": "Общий баланс",
+    "acrossGroups": "в {{count}} группах",
+    "yourGroups": "Ваши группы",
+    "joinGroup": "Вступить",
+    "createGroup": "Создать группу",
+    "noGroups": "Вы ещё не в группах",
+    "members": "участников",
+    "recentActivity": "Последние операции",
+    "noActivity": "Нет недавних операций",
+    "youOwe": "Вы должны",
+    "owedToYou": "Вам должны",
+    "allExpenses": "Все расходы",
+    "allSettlements": "Все расчёты",
+    "selectGroup": "Выберите группу",
+    "selectGroupDescription": "Выберите группу для добавления расходов",
+    "globalAnalytics": "Ваша аналитика"
+  },
+  "expenses": {
+    "title": "Расходы",
+    "addExpense": "Добавить расход",
+    "noExpenses": "Нет расходов",
+    "total": "Итого",
+    "paidBy": "Оплатил {{name}}",
+    "splitWith": "Разделено на {{count}} человек",
+    "search": "Поиск расходов...",
+    "tabs": {
+      "all": "Все",
+      "iPaid": "Я оплатил",
+      "iOwe": "Я должен"
+    },
+    "empty": {
+      "title": "Расходы не найдены",
+      "description": "Добавьте первый расход для начала"
+    },
+    "yourShare": "Ваша доля: {{amount}}",
+    "noGroup": {
+      "title": "Группа не выбрана",
+      "description": "Откройте приложение из группового чата Telegram"
+    }
+  },
+  "settle": {
+    "title": "Расчёт",
+    "youOwe": "Ты должен",
+    "youllReceive": "Ты получишь",
+    "owesYou": "должен тебе",
+    "payNow": "Оплатить",
+    "payWith": "Оплатить через",
+    "pay": "Оплатить",
+    "paying": "Оплата...",
+    "remind": "Напомнить",
+    "settled": "Погашено!",
+    "noDebts": "Нет долгов",
+    "noWallet": "Нет кошелька",
+    "connectWallet": "Подключи кошелёк для оплаты",
+    "debtsToPay": "Долги к оплате ({{count}})",
+    "owedToYou": "Должны тебе ({{count}})",
+    "pending": "Ожидают ({{count}})",
+    "completed": "Завершены ({{count}})",
+    "allSettled": {
+      "title": "Всё погашено!",
+      "description": "Нет ожидающих расчётов"
+    },
+    "noGroup": {
+      "title": "Группа не выбрана",
+      "description": "Откройте приложение из группового чата Telegram"
+    }
+  },
+  "scan": {
+    "title": "Сканировать чек",
+    "description": "Сфотографируйте или загрузите чек для добавления расходов",
+    "takePhoto": "Сделать фото",
+    "uploadPhoto": "Загрузить фото",
+    "scanning": "Сканирование...",
+    "noItems": "Позиции не найдены",
+    "uploadCta": "Нажмите для сканирования",
+    "formats": "JPEG, PNG, PDF",
+    "camera": "Камера",
+    "gallery": "Галерея",
+    "orType": "Или введите расход",
+    "typePlaceholder": "напр., \"Ужин 50 TON на троих\"",
+    "analyzing": "Анализ чека...",
+    "cancel": "Отмена",
+    "createExpense": "Создать расход",
+    "receipt": {
+      "confidence": "Точность {{value}}%",
+      "items": "Позиции",
+      "selected": "Выбрано: {{count}}",
+      "quantity": "x{{count}}",
+      "subtotal": "Подытог",
+      "tax": "Налог",
+      "yourShare": "Ваша доля"
+    }
+  },
+  "analytics": {
+    "title": "Аналитика",
+    "totalSpent": "Всего потрачено",
+    "avgPerPerson": "В среднем на человека",
+    "thisMonth": "Этот месяц",
+    "lastMonth": "Прошлый месяц",
+    "byCategory": "По категориям",
+    "noData": "Нет данных аналитики",
+    "export": "Экспорт",
+    "totalExpenses": "Всего расходов",
+    "expenseCount": "Расходов",
+    "members": "Участников",
+    "avgExpense": "Средний расход",
+    "byMember": "По участникам",
+    "trend": "Тренд",
+    "memberBalances": "Балансы участников",
+    "paid": "Оплатил",
+    "categoryBreakdown": "По категориям",
+    "noCategories": "Нет данных по категориям",
+    "monthlyTrend": "По месяцам",
+    "noTrend": "Недостаточно данных",
+    "topExpenses": "Топ расходов",
+    "exportData": "Экспорт данных",
+    "expensesCSV": "Расходы CSV",
+    "settlementsCSV": "Расчёты CSV",
+    "fullCSV": "Полный отчёт CSV",
+    "htmlReport": "HTML отчёт",
+    "noGroup": {
+      "title": "Группа не выбрана",
+      "description": "Откройте приложение из группового чата Telegram"
+    },
+    "received": "Получено",
+    "groups": "Групп",
+    "mostActive": "Самая активная группа",
+    "viewDetails": "Подробнее"
+  },
+  "recurring": {
+    "title": "Регулярные расходы",
+    "subtitle": "Автоматизируйте повторяющиеся расходы",
+    "add": "Добавить",
+    "noRecurring": "Нет регулярных расходов",
+    "frequency": "Частота",
+    "nextDue": "Следующий платёж",
+    "noTemplates": "Нет шаблонов",
+    "noTemplatesDesc": "Создайте шаблоны для повторяющихся расходов",
+    "createFirst": "Создать первый шаблон",
+    "createTitle": "Создать регулярный расход",
+    "confirmDelete": "Удалить этот шаблон?",
+    "nextRun": "Далее",
+    "active": "Активен",
+    "inactive": "Неактивен",
+    "paidBy": "Оплачивает",
+    "splitWith": "Делится с",
+    "name": "Название",
+    "namePlaceholder": "напр., Аренда квартиры",
+    "description": "Описание",
+    "descriptionPlaceholder": "Для чего этот расход?",
+    "amount": "Сумма",
+    "daily": "Ежедневно",
+    "weekly": "Еженедельно",
+    "monthly": "Ежемесячно",
+    "yearly": "Ежегодно",
+    "dayOfWeek": "День недели",
+    "dayOfMonth": "День месяца",
+    "dayOrdinal": "",
+    "sun": "В",
+    "mon": "П",
+    "tue": "В",
+    "wed": "С",
+    "thu": "Ч",
+    "fri": "П",
+    "sat": "С",
+    "noGroup": {
+      "title": "Группа не выбрана",
+      "description": "Откройте приложение из группового чата Telegram"
+    }
+  },
+  "wallet": {
+    "connect": "Подключить кошелёк",
+    "copyAddress": "Скопировать адрес",
+    "disconnect": "Отключить"
+  },
+  "profile": {
+    "title": "Профиль",
+    "telegramPremium": "Telegram Premium",
+    "tonWallet": "TON Кошелёк",
+    "mainnet": "Основная сеть",
+    "testnet": "Тестовая сеть",
+    "disconnectWallet": "Отключить кошелёк",
+    "connectWallet": "Подключить кошелёк",
+    "connectWalletDescription": "Подключите TON кошелёк для отправки и получения платежей",
+    "appInfo": "О приложении",
+    "platform": "Платформа",
+    "telegramMiniApp": "Telegram Mini App",
+    "webBrowser": "Веб-браузер",
+    "theme": "Тема",
+    "language": "Язык",
+    "version": "Версия",
+    "themeColors": "Цвета темы",
+    "background": "Фон",
+    "text": "Текст",
+    "button": "Кнопка",
+    "link": "Ссылка",
+    "hint": "Подсказка",
+    "secondary": "Вторичный"
+  },
+  "addExpense": {
+    "button": "Добавить расход",
+    "title": "Новый расход",
+    "description": "Введите данные расхода и выберите участников.",
+    "requiredFields": "Обязательные поля",
+    "descriptionLabel": "Описание",
+    "descriptionPlaceholder": "Ужин, продукты и т.д.",
+    "amountLabel": "Сумма ({{currency}})",
+    "splitWith": "Разделить с",
+    "selectAll": "Выбрать всех",
+    "eachPersonPays": "Каждый платит:"
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Что-то пошло не так",
+    "retry": "Повторить",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Изменить",
+    "confirm": "Подтвердить",
+    "create": "Создать",
+    "creating": "Создание...",
+    "adding": "Добавление...",
+    "you": "Вы"
+  },
+  "toast": {
+    "walletNotConnected": {
+      "title": "Кошелёк не подключён",
+      "description": "Сначала подключите кошелёк"
+    },
+    "walletConnectError": {
+      "title": "Ошибка подключения",
+      "description": "Не удалось подключить кошелёк. Попробуйте ещё раз"
+    },
+    "walletConnectionRejected": {
+      "title": "Подключение отклонено",
+      "description": "Подключение кошелька было отклонено"
+    },
+    "walletDisconnectError": {
+      "title": "Ошибка отключения",
+      "description": "Не удалось отключить кошелёк. Попробуйте ещё раз"
+    },
+    "addressCopied": {
+      "title": "Адрес скопирован",
+      "description": "Адрес кошелька скопирован в буфер обмена"
+    },
+    "copyError": {
+      "title": "Ошибка копирования",
+      "description": "Не удалось скопировать адрес. Попробуйте ещё раз"
+    },
+    "noWalletAddress": {
+      "title": "Нет адреса кошелька",
+      "description": "{{name}} не указал кошелёк"
+    },
+    "paymentSent": {
+      "title": "Платёж отправлен!",
+      "description": "Отправлено {{amount}} TON для {{name}}"
+    },
+    "paymentError": {
+      "title": "Ошибка платежа",
+      "description": "{{error}}"
+    },
+    "expenseAdded": {
+      "title": "Расход добавлен",
+      "description": "Добавлен {{description}} на {{amount}}"
+    },
+    "expenseError": {
+      "title": "Не удалось добавить расход",
+      "description": "Попробуйте ещё раз"
+    },
+    "expenseDeleted": {
+      "title": "Расход удалён",
+      "description": "Нажмите отменить для восстановления"
+    },
+    "expenseDeletedPermanently": {
+      "title": "Расход удалён навсегда"
+    },
+    "deleteError": {
+      "title": "Не удалось удалить"
+    },
+    "undo": "Отменить",
+    "scanError": {
+      "title": "Ошибка сканирования",
+      "description": "Не удалось обработать изображение"
+    },
+    "receiptScanned": {
+      "title": "Чек отсканирован!",
+      "description": "Найдено позиций: {{count}}"
+    },
+    "parseSuccess": {
+      "title": "Расход распознан",
+      "description": "{{description}} на {{amount}}"
+    },
+    "parseError": {
+      "title": "Ошибка распознавания",
+      "description": "Не удалось понять текст"
+    },
+    "expenseCreated": {
+      "title": "Расход создан",
+      "description": "{{description}} на {{amount}} TON"
+    }
+  }
+}

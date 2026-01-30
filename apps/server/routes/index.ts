@@ -1,0 +1,11 @@
+export { groupsRoutes } from './groups.routes';
+export { expensesRoutes } from './expenses.routes';
+export { settlementsRoutes } from './settlements.routes';
+export { usersRoutes } from './users.routes';
+export { analyticsRoutes } from './analytics.routes';
+export { aiRoutes } from './ai.routes';
+export { currencyRoutes } from './currency.routes';
+export { authRoutes } from './auth.routes';
+export { webhooksRoutes } from './webhooks.routes';
+export { recurringRoutes } from './recurring.routes';
+export { tonProofRoutes } from './ton-proof.routes';

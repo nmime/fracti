@@ -1,0 +1,360 @@
+{
+  "auth": {
+    "welcome": "Welcome to Fracti",
+    "subtitle": "Split expenses with friends. Simple, fast, and powered by TON blockchain.",
+    "authenticating": "Authenticating...",
+    "feature": {
+      "track": "Track expenses",
+      "split": "Split with friends",
+      "settle": "Pay with TON",
+      "ai": "AI receipt scan"
+    },
+    "or": "or",
+    "openInTelegram": "Open in Telegram",
+    "footer": "Powered by TON blockchain"
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "nav": {
+    "home": "Home",
+    "expenses": "Expenses",
+    "scan": "Scan",
+    "settle": "Settle",
+    "analytics": "Analytics",
+    "recurring": "Recurring",
+    "more": "More"
+  },
+  "home": {
+    "greeting": "Hello, {{name}}!",
+    "youAreOwed": "You are owed",
+    "youOwe": "You owe",
+    "allSettled": "All settled up!",
+    "settleUp": "Settle up",
+    "debtWeb": "Debt web",
+    "expenses": "Expenses",
+    "members": "Members",
+    "recentActivity": "Recent Activity",
+    "viewAll": "View all",
+    "paid": "paid",
+    "for": "for",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "justNow": "Just now",
+    "noActivity": "No recent activity",
+    "noDebts": "No debts yet",
+    "noGroup": {
+      "title": "No Group Selected",
+      "description": "Open this app from a Telegram group chat to get started"
+    },
+    "allGroups": "All Groups"
+  },
+  "userDashboard": {
+    "greeting": "Hello, {{name}}!",
+    "subtitle": "Your expense overview",
+    "totalBalance": "Total Balance",
+    "acrossGroups": "across {{count}} groups",
+    "yourGroups": "Your Groups",
+    "noGroups": "You haven't joined any groups yet",
+    "joinGroup": "Join",
+    "createGroup": "Create Group",
+    "members": "members",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No recent activity",
+    "youOwe": "You owe",
+    "owedToYou": "Owed to you",
+    "allExpenses": "All Expenses",
+    "allSettlements": "All Settlements",
+    "selectGroup": "Select a group",
+    "selectGroupDescription": "Choose a group to add expenses",
+    "globalAnalytics": "Your Analytics"
+  },
+  "expenses": {
+    "title": "Expenses",
+    "addExpense": "Add Expense",
+    "noExpenses": "No expenses yet",
+    "total": "Total",
+    "paidBy": "Paid by {{name}}",
+    "splitWith": "Split with {{count}} people",
+    "search": "Search expenses...",
+    "tabs": {
+      "all": "All",
+      "iPaid": "I Paid",
+      "iOwe": "I Owe"
+    },
+    "empty": {
+      "title": "No expenses found",
+      "description": "Add your first expense to get started"
+    },
+    "yourShare": "Your share: {{amount}}",
+    "noGroup": {
+      "title": "No Group Selected",
+      "description": "Open this app from a Telegram group chat to view expenses"
+    }
+  },
+  "settle": {
+    "title": "Settle Up",
+    "youOwe": "You owe",
+    "youllReceive": "You'll receive",
+    "owesYou": "owes you",
+    "payNow": "Pay Now",
+    "payWith": "Pay with",
+    "pay": "Pay",
+    "paying": "Paying...",
+    "remind": "Remind",
+    "settled": "Settled!",
+    "noDebts": "No debts to settle",
+    "noWallet": "No wallet",
+    "connectWallet": "Connect wallet to settle debts",
+    "debtsToPay": "Debts to Pay ({{count}})",
+    "owedToYou": "Owed to You ({{count}})",
+    "pending": "Pending ({{count}})",
+    "completed": "Completed ({{count}})",
+    "allSettled": {
+      "title": "All Settled!",
+      "description": "You have no pending settlements"
+    },
+    "noGroup": {
+      "title": "No Group Selected",
+      "description": "Open this app from a Telegram group chat to settle debts"
+    }
+  },
+  "scan": {
+    "title": "Scan Receipt",
+    "description": "Take a photo or upload a receipt to add expenses",
+    "takePhoto": "Take Photo",
+    "uploadPhoto": "Upload Photo",
+    "scanning": "Scanning...",
+    "noItems": "No items found",
+    "uploadCta": "Tap to scan receipt",
+    "formats": "JPEG, PNG, PDF",
+    "camera": "Camera",
+    "gallery": "Gallery",
+    "orType": "Or type your expense",
+    "typePlaceholder": "e.g., \"Dinner 50 TON split 3 ways\"",
+    "analyzing": "Analyzing receipt...",
+    "cancel": "Cancel",
+    "createExpense": "Create Expense",
+    "receipt": {
+      "confidence": "{{value}}% confidence",
+      "items": "Items",
+      "selected": "{{count}} selected",
+      "quantity": "x{{count}}",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "yourShare": "Your share"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "totalSpent": "Total Spent",
+    "avgPerPerson": "Avg per Person",
+    "thisMonth": "This Month",
+    "lastMonth": "Last Month",
+    "byCategory": "By Category",
+    "noData": "No analytics data yet",
+    "export": "Export",
+    "totalExpenses": "Total Expenses",
+    "expenseCount": "Expenses",
+    "members": "Members",
+    "avgExpense": "Avg Expense",
+    "byMember": "By Member",
+    "trend": "Trend",
+    "memberBalances": "Member Balances",
+    "paid": "Paid",
+    "categoryBreakdown": "Category Breakdown",
+    "noCategories": "No category data",
+    "monthlyTrend": "Monthly Trend",
+    "noTrend": "Not enough data for trend",
+    "topExpenses": "Top Expenses",
+    "exportData": "Export Data",
+    "expensesCSV": "Expenses CSV",
+    "settlementsCSV": "Settlements CSV",
+    "fullCSV": "Full Report CSV",
+    "htmlReport": "HTML Report",
+    "noGroup": {
+      "title": "No Group Selected",
+      "description": "Open this app from a Telegram group chat to view analytics"
+    },
+    "received": "Received",
+    "groups": "Groups",
+    "mostActive": "Most Active Group",
+    "viewDetails": "View details"
+  },
+  "recurring": {
+    "title": "Recurring Expenses",
+    "subtitle": "Automate your regular expenses",
+    "add": "Add",
+    "noRecurring": "No recurring expenses",
+    "frequency": "Frequency",
+    "nextDue": "Next due",
+    "noTemplates": "No recurring expenses",
+    "noTemplatesDesc": "Create templates for expenses that repeat regularly",
+    "createFirst": "Create First Template",
+    "createTitle": "Create Recurring Expense",
+    "confirmDelete": "Are you sure you want to delete this template?",
+    "nextRun": "Next",
+    "active": "Active",
+    "inactive": "Inactive",
+    "paidBy": "Paid by",
+    "splitWith": "Split with",
+    "name": "Name",
+    "namePlaceholder": "e.g., Monthly Rent",
+    "description": "Description",
+    "descriptionPlaceholder": "What is this expense for?",
+    "amount": "Amount",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "dayOfWeek": "Day of Week",
+    "dayOfMonth": "Day of Month",
+    "dayOrdinal": "",
+    "sun": "S",
+    "mon": "M",
+    "tue": "T",
+    "wed": "W",
+    "thu": "T",
+    "fri": "F",
+    "sat": "S",
+    "noGroup": {
+      "title": "No Group Selected",
+      "description": "Open this app from a Telegram group chat to manage recurring expenses"
+    }
+  },
+  "wallet": {
+    "connect": "Connect Wallet",
+    "copyAddress": "Copy Address",
+    "disconnect": "Disconnect"
+  },
+  "profile": {
+    "title": "Profile",
+    "telegramPremium": "Telegram Premium",
+    "tonWallet": "TON Wallet",
+    "mainnet": "Mainnet",
+    "testnet": "Testnet",
+    "disconnectWallet": "Disconnect Wallet",
+    "connectWallet": "Connect Wallet",
+    "connectWalletDescription": "Connect your TON wallet to send and receive payments",
+    "appInfo": "App Info",
+    "platform": "Platform",
+    "telegramMiniApp": "Telegram Mini App",
+    "webBrowser": "Web Browser",
+    "theme": "Theme",
+    "language": "Language",
+    "version": "Version",
+    "themeColors": "Theme Colors",
+    "background": "Background",
+    "text": "Text",
+    "button": "Button",
+    "link": "Link",
+    "hint": "Hint",
+    "secondary": "Secondary"
+  },
+  "addExpense": {
+    "button": "Add Expense",
+    "title": "Add New Expense",
+    "description": "Enter the expense details and select who to split with.",
+    "requiredFields": "Required fields",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Dinner, groceries, etc.",
+    "amountLabel": "Amount ({{currency}})",
+    "splitWith": "Split with",
+    "selectAll": "Select All",
+    "eachPersonPays": "Each person pays:"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "create": "Create",
+    "creating": "Creating...",
+    "adding": "Adding...",
+    "you": "You"
+  },
+  "toast": {
+    "walletNotConnected": {
+      "title": "Wallet not connected",
+      "description": "Please connect your wallet first"
+    },
+    "walletConnectError": {
+      "title": "Connection failed",
+      "description": "Failed to connect wallet. Please try again"
+    },
+    "walletConnectionRejected": {
+      "title": "Connection rejected",
+      "description": "Wallet connection was rejected"
+    },
+    "walletDisconnectError": {
+      "title": "Disconnect failed",
+      "description": "Failed to disconnect wallet. Please try again"
+    },
+    "addressCopied": {
+      "title": "Address copied",
+      "description": "Wallet address copied to clipboard"
+    },
+    "copyError": {
+      "title": "Copy failed",
+      "description": "Failed to copy address. Please try again"
+    },
+    "noWalletAddress": {
+      "title": "No wallet address",
+      "description": "{{name}} has not set up their wallet"
+    },
+    "paymentSent": {
+      "title": "Payment sent!",
+      "description": "Sent {{amount}} TON to {{name}}"
+    },
+    "paymentError": {
+      "title": "Payment failed",
+      "description": "{{error}}"
+    },
+    "expenseAdded": {
+      "title": "Expense added",
+      "description": "Added {{description}} for {{amount}}"
+    },
+    "expenseError": {
+      "title": "Failed to add expense",
+      "description": "Please try again"
+    },
+    "expenseDeleted": {
+      "title": "Expense deleted",
+      "description": "Click undo to restore"
+    },
+    "expenseDeletedPermanently": {
+      "title": "Expense permanently deleted"
+    },
+    "deleteError": {
+      "title": "Failed to delete"
+    },
+    "undo": "Undo",
+    "scanError": {
+      "title": "Scan failed",
+      "description": "Could not process the image"
+    },
+    "receiptScanned": {
+      "title": "Receipt scanned!",
+      "description": "Found {{count}} items"
+    },
+    "parseSuccess": {
+      "title": "Expense parsed",
+      "description": "{{description}} for {{amount}}"
+    },
+    "parseError": {
+      "title": "Parse failed",
+      "description": "Could not understand the text"
+    },
+    "expenseCreated": {
+      "title": "Expense created",
+      "description": "{{description}} for {{amount}} TON"
+    }
+  }
+}

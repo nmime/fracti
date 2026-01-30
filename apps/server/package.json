@@ -1,0 +1,42 @@
+{
+  "name": "@fracti/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./lambda": "./dist/lambda.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.974.0",
+    "@aws-sdk/lib-dynamodb": "^3.974.0",
+    "@grammyjs/validator": "^1.0.1",
+    "@hono/node-server": "^1.15.1",
+    "@hono/zod-validator": "^0.5.0",
+    "@libs/ai": "workspace:*",
+    "@libs/constants": "workspace:*",
+    "@libs/db": "workspace:*",
+    "@libs/integrations": "workspace:*",
+    "@libs/types": "workspace:*",
+    "@ton/core": "^0.63.0",
+    "@ton/crypto": "^3.3.0",
+    "electrodb": "^3.5.3",
+    "hono": "^4.11.5",
+    "jsonwebtoken": "^9.0.3",
+    "tweetnacl": "^1.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.148",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.2"
+  }
+}

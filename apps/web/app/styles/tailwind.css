@@ -1,0 +1,112 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(14.5% 0 0);
+  --color-muted: oklch(96.1% 0.003 247);
+  --color-muted-foreground: oklch(55.2% 0.016 264);
+  --color-primary: oklch(58.9% 0.19 250);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(96.1% 0.003 247);
+  --color-secondary-foreground: oklch(14.5% 0 0);
+  --color-accent: oklch(96.1% 0.003 247);
+  --color-accent-foreground: oklch(14.5% 0 0);
+  --color-destructive: oklch(57.7% 0.23 27.3);
+  --color-destructive-foreground: oklch(100% 0 0);
+  --color-success: oklch(62% 0.19 145);
+  --color-success-foreground: oklch(100% 0 0);
+  --color-border: oklch(90% 0.003 247);
+  --color-ring: oklch(58.9% 0.19 250);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(14.5% 0 0);
+  --color-popover: oklch(100% 0 0);
+  --color-popover-foreground: oklch(14.5% 0 0);
+
+  /* TON brand colors */
+  --color-ton: oklch(56% 0.18 230);
+  --color-ton-dark: oklch(48% 0.18 230);
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --color-background: oklch(14.5% 0 0);
+  --color-foreground: oklch(98.4% 0 0);
+  --color-muted: oklch(21.8% 0.008 264);
+  --color-muted-foreground: oklch(71.2% 0.016 264);
+  --color-primary: oklch(58.9% 0.19 250);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(21.8% 0.008 264);
+  --color-secondary-foreground: oklch(98.4% 0 0);
+  --color-accent: oklch(21.8% 0.008 264);
+  --color-accent-foreground: oklch(98.4% 0 0);
+  --color-destructive: oklch(65% 0.2 27.3);
+  --color-destructive-foreground: oklch(100% 0 0);
+  --color-success: oklch(70% 0.17 145);
+  --color-success-foreground: oklch(100% 0 0);
+  --color-border: oklch(27% 0.008 264);
+  --color-ring: oklch(58.9% 0.19 250);
+  --color-card: oklch(14.5% 0 0);
+  --color-card-foreground: oklch(98.4% 0 0);
+  --color-popover: oklch(18% 0.008 264);
+  --color-popover-foreground: oklch(98.4% 0 0);
+
+  /* TON brand colors (same in dark mode) */
+  --color-ton: oklch(56% 0.18 230);
+  --color-ton-dark: oklch(48% 0.18 230);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    font-family: var(--font-family-sans);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Respect user's reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    /* Disable spinning animations */
+    .animate-spin {
+      animation: none;
+    }
+
+    /* Disable all Radix UI animate-in/animate-out animations */
+    [data-state] {
+      animation: none !important;
+    }
+
+    /* Reduce transition durations to instant */
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    /* Disable scale transforms */
+    .active\:scale-95:active,
+    .active\:scale-\[0\.98\]:active {
+      transform: scale(1);
+    }
+  }
+}

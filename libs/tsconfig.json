@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2024"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "paths": {
+      "@libs/*": ["./*"]
+    }
+  },
+  "include": ["constants/**/*.ts", "db/**/*.ts", "session/**/*.ts", "tools/**/*.ts", "types/**/*.ts", "vault/**/*.ts"]
+}

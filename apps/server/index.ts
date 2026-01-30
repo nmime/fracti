@@ -1,0 +1,275 @@
+import { Hono } from 'hono';
+import { handle } from 'hono/aws-lambda';
+import { compress } from 'hono/compress';
+import { cors } from 'hono/cors';
+import { HTTPException } from 'hono/http-exception';
+import { logger as honoLogger } from 'hono/logger';
+import { requestId } from 'hono/request-id';
+import { secureHeaders } from 'hono/secure-headers';
+import { timing } from 'hono/timing';
+import { ZodError } from 'zod';
+import { isDevelopment, getAllowedOrigins } from './config';
+import { bodyLimit, BodyLimits } from './middleware/bodyLimit';
+import { standardRateLimit, aiRateLimit, webhookRateLimit } from './middleware/rateLimit';
+import {
+  groupsRoutes,
+  expensesRoutes,
+  settlementsRoutes,
+  usersRoutes,
+  analyticsRoutes,
+  aiRoutes,
+  webhooksRoutes,
+  currencyRoutes,
+  authRoutes,
+  recurringRoutes,
+  tonProofRoutes,
+} from './routes';
+import { logger } from './utils/logger';
+import type { Env } from './types/api.types';
+
+// Create main Hono app with typed environment
+const app = new Hono<Env>();
+
+// ============================================
+// Global Middleware
+// ============================================
+
+// Request ID for tracing
+app.use('*', requestId());
+
+// Timing headers (useful for debugging)
+app.use('*', timing());
+
+// Security headers
+app.use(
+  '*',
+  secureHeaders({
+    // Disable CSP in development, enable in production
+    ...(isDevelopment
+      ? {}
+      : {
+          contentSecurityPolicy: {
+            defaultSrc: ["'self'"],
+            scriptSrc: [
+              "'self'",
+              'https://telegram.org',
+              'https://*.telegram.org',
+              // TON Connect requires this for wallet connection
+              'https://ton.org',
+            ],
+            // Use nonce for styles in production - for now allow inline with strict CSP
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: [
+              "'self'",
+              'data:',
+              'blob:',
+              'https:',
+              // Telegram CDN for avatars
+              'https://t.me',
+              'https://*.telegram.org',
+            ],
+            connectSrc: [
+              "'self'",
+              'https://api.telegram.org',
+              'https://tonapi.io',
+              'https://*.tonapi.io',
+              // TON Connect bridge
+              'https://bridge.tonapi.io',
+              'wss://bridge.tonapi.io',
+              // Toncenter for transaction verification
+              'https://toncenter.com',
+              'https://*.toncenter.com',
+            ],
+            fontSrc: ["'self'", 'data:'],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'self'", 'https://web.telegram.org', 'https://*.telegram.org'],
+            // Additional security directives
+            upgradeInsecureRequests: [],
+            workerSrc: ["'self'", 'blob:'],
+            manifestSrc: ["'self'"],
+          },
+          // HSTS: enforce HTTPS for 1 year, include subdomains, preload
+          strictTransportSecurity: 'max-age=31536000; includeSubDomains; preload',
+        }),
+    xContentTypeOptions: 'nosniff',
+    xFrameOptions: 'SAMEORIGIN', // Allow Telegram iframe
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    // Additional security headers
+    xXssProtection: '1; mode=block',
+    xDnsPrefetchControl: 'off',
+    xPermittedCrossDomainPolicies: 'none',
+  }),
+);
+
+// Compression for responses
+app.use('*', compress());
+
+// Logger (Hono request logger)
+app.use('*', honoLogger());
+
+// CORS - restricted in production
+app.use(
+  '*',
+  cors({
+    origin: getAllowedOrigins(),
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'X-Telegram-Widget-Data', 'Authorization'],
+    exposeHeaders: ['X-Request-Id', 'Server-Timing'],
+    maxAge: 86400,
+    credentials: true,
+  }),
+);
+
+// Body size limit to prevent DoS attacks - 1MB default for most endpoints
+app.use('*', bodyLimit({ maxSize: BodyLimits.STANDARD }));
+
+// ============================================
+// Health Check
+// ============================================
+
+app.get('/api/health', (c) => {
+  return c.json({
+    success: true,
+    data: {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'fracti-api',
+      version: '1.0.0',
+      requestId: c.get('requestId'),
+    },
+  });
+});
+
+// ============================================
+// Mount Routes
+// ============================================
+
+// Groups API - standard rate limit
+app.use('/api/groups/*', standardRateLimit);
+app.route('/api/groups', groupsRoutes);
+
+// Expenses API (nested under groups) - already covered by /api/groups/*
+app.route('/api/groups', expensesRoutes);
+
+// Recurring templates API (nested under groups) - already covered by /api/groups/*
+app.route('/api/groups', recurringRoutes);
+
+// Settlements API (nested under groups) - already covered by /api/groups/*
+app.route('/api/groups', settlementsRoutes);
+
+// Analytics API (nested under groups) - already covered by /api/groups/*
+app.route('/api/groups', analyticsRoutes);
+
+// Users API - user-centric queries (personal expenses, debts, settlements)
+app.use('/api/users/*', standardRateLimit);
+app.route('/api/users', usersRoutes);
+
+// AI API - stricter rate limit (expensive operations), higher body limit for image data
+app.use('/api/ai/*', aiRateLimit);
+app.use('/api/ai/*', bodyLimit({ maxSize: BodyLimits.AI_ENDPOINT }));
+app.route('/api/ai', aiRoutes);
+
+// Currency API - standard rate limit
+app.use('/api/currency/*', standardRateLimit);
+app.route('/api/currency', currencyRoutes);
+
+// Auth API - standard rate limit
+app.use('/api/auth/*', standardRateLimit);
+app.route('/api/auth', authRoutes);
+
+// Webhooks (Telegram bot) - higher rate limit
+app.use('/api/webhooks/*', webhookRateLimit);
+app.route('/api/webhooks', webhooksRoutes);
+
+// TON Proof verification - standard rate limit
+app.use('/api/ton-proof/*', standardRateLimit);
+app.route('/api/ton-proof', tonProofRoutes);
+
+// ============================================
+// Error Handling
+// ============================================
+
+// 404 handler
+app.notFound((c) => {
+  return c.json(
+    {
+      success: false,
+      error: 'Not Found',
+      message: `Route ${c.req.method} ${c.req.path} not found`,
+      requestId: c.get('requestId'),
+    },
+    404,
+  );
+});
+
+// Global error handler
+app.onError((err, c) => {
+  const reqId = c.get('requestId');
+
+  // Handle HTTPException (intentional errors)
+  if (err instanceof HTTPException) {
+    return c.json(
+      {
+        success: false,
+        error: err.message || 'Error',
+        message: err.cause instanceof Error ? err.cause.message : undefined,
+        requestId: reqId,
+      },
+      err.status,
+    );
+  }
+
+  // Handle Zod validation errors
+  if (err instanceof ZodError) {
+    return c.json(
+      {
+        success: false,
+        error: 'Validation Error',
+        message: 'Invalid request data',
+        details: err.issues.map((e) => ({
+          path: e.path.map(String).join('.'),
+          message: e.message,
+        })),
+        requestId: reqId,
+      },
+      400,
+    );
+  }
+
+  // Log unexpected errors
+  logger.error(
+    'Unhandled error',
+    {
+      requestId: reqId,
+      path: c.req.path,
+      method: c.req.method,
+    },
+    err,
+  );
+
+  // Return generic error in production
+  return c.json(
+    {
+      success: false,
+      error: 'Internal Server Error',
+      message: isDevelopment ? err.message : 'An unexpected error occurred',
+      stack: isDevelopment ? err.stack : undefined,
+      requestId: reqId,
+    },
+    500,
+  );
+});
+
+// ============================================
+// AWS Lambda Export
+// ============================================
+
+export const handler = handle(app);
+
+// Export app for testing
+export { app };
+
+// Export types
+export type { Env };

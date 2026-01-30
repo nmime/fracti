@@ -1,0 +1,51 @@
+# AWS CodeBuild configuration for CI/CD
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    NODE_ENV: production
+    PNPM_VERSION: '10.28.0'
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 22
+    commands:
+      - echo "Installing pnpm..."
+      - npm install -g pnpm@$PNPM_VERSION
+      - echo "Installing dependencies..."
+      - pnpm install --frozen-lockfile
+
+  pre_build:
+    commands:
+      - echo "Running type checks..."
+      - pnpm typecheck
+      - echo "Running linter..."
+      - pnpm lint || true
+
+  build:
+    commands:
+      - echo "Building packages..."
+      - pnpm build
+      - echo "Synthesizing CDK..."
+      - pnpm cdk:synth
+
+  post_build:
+    commands:
+      - echo "Build completed successfully"
+
+artifacts:
+  files:
+    - '**/*'
+  exclude-paths:
+    - node_modules/**/*
+    - .git/**/*
+    - '**/cdk.out/**/*'
+
+cache:
+  paths:
+    - node_modules/**/*
+    - libs/**/node_modules/**/*
+    - apps/**/node_modules/**/*
+    - infra/cdk/node_modules/**/*

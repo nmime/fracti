@@ -1,0 +1,58 @@
+// Re-export selected types from @libs/types (excluding API types that are overridden locally)
+export type {
+  DefaultCurrency,
+  TelegramUser as CoreTelegramUser,
+  TelegramTheme,
+  DeepLinkParams,
+  GroupRecord,
+  MemberRecord,
+  ExpenseSplit,
+  ExpenseRecord,
+  ExpenseParticipantRecord,
+  SettlementRecord,
+  PaginationOptions,
+  PaginatedResult,
+  UserExpenseSummary,
+  UserActivityItem,
+  GroupActivityItem,
+  DbCreateGroupInput,
+  DbCreateMemberInput,
+  DbCreateExpenseInput,
+  DbCreateSettlementInput,
+  CreateGroupInput,
+  CreateExpenseInput,
+  CreateSettlementInput,
+  UpdateSettlementInput,
+  ParseTextInput,
+  ParseVisionInput,
+  ParsedExpense,
+  ParsedReceipt,
+} from '@libs/types';
+
+// Re-export zod schemas
+export {
+  safeAmount,
+  tonWalletAddress,
+  base64Image,
+  txHash,
+  currencyCode,
+  expenseCategory,
+  groupIdParamSchema,
+  paginationQuerySchema,
+  createGroupSchema,
+  joinGroupSchema,
+  updateWalletSchema,
+  splitSchema,
+  createExpenseSchema,
+  createSettlementSchema,
+  updateSettlementSchema,
+  parseTextSchema,
+  parseVisionSchema,
+  parsedExpenseSchema,
+  parsedReceiptSchema,
+  parsedReceiptItemSchema,
+  z,
+} from '@libs/types';
+
+// Local API types (with requestId support)
+export type * from './api.types';
