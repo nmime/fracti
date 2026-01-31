@@ -1,21 +1,14 @@
-import {
-  initBedrock,
+/**
+ * AI integration for bot
+ * Uses unified client from @libs/ai with lazy initialization
+ */
+
+export {
   invokeClaudeText,
   invokeClaudeVision,
+  getProvider,
   type AIResult,
   type ParsedExpense,
   type ParsedReceipt,
   type InvokeClaudeTextOptions,
 } from '@libs/ai';
-import { getAwsRegion, getBedrockModelId } from '../config';
-
-// Initialize bedrock with bot config
-initBedrock({
-  region: getAwsRegion(),
-  modelId: getBedrockModelId(),
-});
-
-// Re-export everything
-export { invokeClaudeText, invokeClaudeVision };
-
-export type { AIResult, ParsedExpense, ParsedReceipt, InvokeClaudeTextOptions };

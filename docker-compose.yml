@@ -25,7 +25,7 @@ services:
       target: production
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3100:3000"
     environment:
       - NODE_ENV=production
       - VITE_API_URL=/api
@@ -51,7 +51,7 @@ services:
       target: production
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3101:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001

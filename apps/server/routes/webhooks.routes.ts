@@ -5,6 +5,7 @@ import type { Env } from '../types/api.types';
 const routes = new Hono<Env>();
 
 // POST /api/webhooks/telegram - Telegram bot webhook endpoint
+// Used by AWS Lambda - Docker uses polling mode via bot container
 routes.post('/telegram', async (c) => {
   try {
     const update = await c.req.json();
@@ -15,8 +16,9 @@ routes.post('/telegram', async (c) => {
       hasCallbackQuery: !!update.callback_query,
     });
 
-    // Process the update (handled by bot app)
-    // This endpoint just acknowledges receipt
+    // In AWS Lambda, this is handled by the bot Lambda function
+    // In Docker, bot runs in polling mode (separate container)
+    // This endpoint just acknowledges receipt for Lambda proxy
 
     return c.json({ success: true });
   } catch (error) {

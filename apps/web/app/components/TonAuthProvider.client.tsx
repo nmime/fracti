@@ -51,26 +51,41 @@ export function TonAuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize payload and set up status change listener ONCE
   useEffect(() => {
-    if (!isConnectionRestored) return;
-    if (initializedRef.current) return;
+    console.log('[TonAuth] Effect running, isConnectionRestored:', isConnectionRestored, 'initialized:', initializedRef.current);
+
+    if (!isConnectionRestored) {
+      console.log('[TonAuth] Waiting for connection restore...');
+      return;
+    }
+    if (initializedRef.current) {
+      console.log('[TonAuth] Already initialized, skipping');
+      return;
+    }
     initializedRef.current = true;
+    console.log('[TonAuth] Initializing...');
 
     // Fetch and set payload
     const initPayload = async () => {
+      console.log('[TonAuth] Fetching payload...');
       const payload = await fetchTonProofPayload();
       if (payload) {
+        console.log('[TonAuth] Setting connect request parameters with payload');
         tonConnectUI.setConnectRequestParameters({
           state: 'ready',
           value: { tonProof: payload },
         });
         logger.debug('TON proof payload initialized');
+      } else {
+        console.log('[TonAuth] No payload received');
       }
     };
 
     initPayload();
 
     // Listen for wallet status changes (matching demo pattern)
+    console.log('[TonAuth] Setting up onStatusChange listener');
     const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
+      console.log('[TonAuth] onStatusChange called, wallet:', wallet ? wallet.account.address : null);
       if (!wallet) {
         // Disconnected
         setWallet(null);
