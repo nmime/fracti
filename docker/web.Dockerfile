@@ -11,6 +11,10 @@ WORKDIR /app
 FROM base AS builder
 ENV CI=true
 
+# Base path for React Router: '/' for Docker, '/app' for AWS Lambda
+ARG VITE_BASE_PATH=/
+ENV VITE_BASE_PATH=$VITE_BASE_PATH
+
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/ ./apps/
 COPY libs/ ./libs/

@@ -73,13 +73,14 @@ const $ = {
   },
 
   // Artifact paths for CDK
+  // GUI basepath: '/app' for AWS Lambda, '/' for Docker
   artifacts: {
     lambda: {
       bot: {
         basepath: '/bot',
       },
       gui: {
-        basepath: '/app',
+        basepath: process.env.VITE_BASE_PATH ?? '/app',
       },
     },
     s3: {
