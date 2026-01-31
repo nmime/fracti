@@ -36,6 +36,14 @@ routes.get('/me/debts', requireAuth, async (c) => {
   return usersController.getDebts(c, user);
 });
 
+// GET /api/users/me/settlements - Get user's settlements
+routes.get('/me/settlements', requireAuth, zValidator('query', paginationQuerySchema), async (c) => {
+  const user = getCurrentUser(c);
+  const { limit, cursor } = c.req.valid('query');
+
+  return usersController.getSettlements(c, user, limit, cursor);
+});
+
 // GET /api/users/me/activity - Get user activity timeline
 routes.get('/me/activity', requireAuth, zValidator('query', paginationQuerySchema), async (c) => {
   const user = getCurrentUser(c);

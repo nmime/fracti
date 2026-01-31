@@ -138,6 +138,22 @@ export class UsersController {
       },
     });
   }
+
+  async getSettlements(c: Context, user: TelegramUser, limit: number, cursor?: string) {
+    const result = await usersService.getUserSettlements(user.id, {
+      limit,
+      lastKey: decodeCursor(cursor),
+    });
+
+    return c.json({
+      success: true,
+      data: result.items,
+      pagination: {
+        hasMore: result.hasMore,
+        nextCursor: encodeCursor(result.lastKey),
+      },
+    });
+  }
 }
 
 export const usersController = new UsersController();

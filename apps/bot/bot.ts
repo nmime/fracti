@@ -29,13 +29,15 @@ export type BotResponse =
       error: string;
     };
 
-async function createBot() {
+async function createBot(usePatchedFetch = true) {
   const bot = new Bot(getBotToken(), {
     botInfo: BOT_INFO,
-    client: {
-      // Use custom fetch to avoid AbortSignal issues on Lambda
-      fetch: patchedFetch,
-    },
+    // Only use patched fetch for Lambda (webhook mode), not for polling
+    ...(usePatchedFetch && {
+      client: {
+        fetch: patchedFetch,
+      },
+    }),
   });
 
   setupBotHandlers(bot);
@@ -109,7 +111,8 @@ export async function handleBotUpdate(update: Update & { update_id?: string | nu
 
 export function startBot(opt?: PollingOptions) {
   async function launchBot() {
-    const bot = await createBot();
+    // Use normal fetch for polling mode (not patched fetch which breaks long-polling)
+    const bot = await createBot(false);
 
     return bot.start(opt);
   }

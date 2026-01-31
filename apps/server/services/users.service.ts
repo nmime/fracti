@@ -33,6 +33,21 @@ export interface UserExpenseInfo {
   createdAt: string;
 }
 
+export interface UserSettlementInfo {
+  id: string;
+  groupId: string;
+  groupTitle: string;
+  fromUserId: string;
+  fromUserName: string;
+  toUserId: string;
+  toUserName: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed';
+  txHash?: string;
+  createdAt: string;
+}
+
 class UsersService {
   async getUserSummary(telegramId: number): Promise<UserExpenseSummary> {
     const memberships = await getGroupsByUser(telegramId);
@@ -191,6 +206,39 @@ class UsersService {
         description: expense.description,
         yourShare,
         createdAt: expense.createdAt,
+      });
+    }
+
+    return {
+      items: enrichedItems,
+      hasMore: result.hasMore,
+      lastKey: result.lastKey,
+    };
+  }
+
+  async getUserSettlements(telegramId: number, options?: PaginationOptions): Promise<{ items: UserSettlementInfo[]; hasMore: boolean; lastKey?: Record<string, unknown> }> {
+    const result = await getSettlementsByUser(telegramId, options);
+
+    // Enrich settlements with group title
+    const enrichedItems: UserSettlementInfo[] = [];
+
+    for (const settlement of result.items) {
+      const group = await getGroup(settlement.groupId);
+      const groupTitle = group?.title || 'Unknown Group';
+
+      enrichedItems.push({
+        id: settlement.id,
+        groupId: settlement.groupId,
+        groupTitle,
+        fromUserId: settlement.fromUserId,
+        fromUserName: settlement.fromUserName,
+        toUserId: settlement.toUserId,
+        toUserName: settlement.toUserName,
+        amount: settlement.amount,
+        currency: settlement.currency || 'USDT',
+        status: settlement.status,
+        txHash: settlement.txHash,
+        createdAt: settlement.createdAt,
       });
     }
 
